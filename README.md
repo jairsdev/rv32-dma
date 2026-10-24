@@ -55,7 +55,7 @@ Objetivo: garantir que o grupo entendeu o escopo e definiu como os módulos se c
 
 - [ ] **Repositório GitHub**: criação, estrutura de diretórios e primeiro commit
 - [ ] **Especificação** (este README ou PDF em `docs/`)
-  - [ ] Diagrama de blocos detalhado do top-level
+  - [x] Diagrama de blocos detalhado do top-level
   - [ ] Mapa de memória (matrizes e registradores do DMA/acelerador)
   - [ ] Especificação dos sinais de interface CPU ↔ DMA ↔ Acelerador
 - [ ] **Modelo de referência (golden model)** em C, C++ ou Python com multiplicação matricial por blocos (tiling)
@@ -64,33 +64,69 @@ Objetivo: garantir que o grupo entendeu o escopo e definiu como os módulos se c
 
 ## 1. Diagrama de blocos (top-level)
 
-> TODO: inserir diagrama em `docs/img/` e referenciar aqui.
+Arquivo editável (draw.io): [`docs/img/top_level.drawio`](docs/img/top_level.drawio) — gerado por [`scripts/gen_drawio.py`](scripts/gen_drawio.py). A arquitetura segue o padrão do diagrama de referência ARM CoreLink NIC-400: masters → adapters → switch central → switch secundário aninhado → controladores de memória → memórias, com todos os links em **AMBA AXI4-Lite, 32 bits**.
 
-```
-![Diagrama de blocos](docs/img/top_level.png)
+```mermaid
+flowchart TB
+    subgraph M[Masters]
+        CPUI["CPU RV32I<br/>Porta I (fetch)"] -->|"nativa valid/ready"| ADI[cpu_axi_adapter]
+        CPUD["CPU RV32I<br/>Porta D (load/store)"] -->|"nativa valid/ready"| ADD[cpu_axi_adapter]
+        DMA["DMA Controller<br/>master + regs DMA"]
+    end
+    subgraph P["NIC-400 secundário (periféricos)"]
+        ACC["Acelerador MatMul<br/>buffers A/B/C + systolic array<br/>+ regs ACC"]
+        SW["axi_periph_switch<br/>0x4000_0000 regs DMA · 0x4000_1000 regs ACC"]
+        ACC <-->|"AXI4-Lite 32"| SW
+    end
+    XBAR["axi_xbar — Core Link<br/>3 masters × 3 slaves · AXI4-Lite 32"]
+    ADI <-->|"M0"| XBAR
+    ADD <-->|"M1"| XBAR
+    DMA <-->|"M2"| XBAR
+    SW <-->|"S2 · 0x4000_0000"| XBAR
+    DMA <-->|"regs DMA"| SW
+    DMA -.->|"sideband (não-AXI)"| ACC
+    DMA -.->|irq| CPUD
+    XBAR <-->|"S0 · 0x0000_0000"| MC0[axi_mem_ctrl #0] --> RAMI["SRAM IMEM"]
+    XBAR <-->|"S1 · 0x1000_0000"| MC1[axi_mem_ctrl #1] --> RAMD["SRAM DMEM compartilhada"]
 ```
 
-Descreva brevemente cada bloco:
+### Correspondência com a figura de referência
+
+| Figura NIC-400 | Nosso bloco |
+|----------------|-------------|
+| Cortex-A (AXI4) ×2 | CPU RV32I — Porta I (fetch) e Porta D (load/store), 2 masters AXI4-Lite |
+| L2C-310 ×2 | `cpu_axi_adapter` ×2 (interface nativa valid/ready → AXI4-Lite) |
+| DMA | DMA Controller (master AXI4-Lite) |
+| Core Link NIC-400 switch | `axi_xbar` (3 masters × 3 slaves) |
+| NIC-400 switch secundário | `axi_periph_switch` (regs DMA / regs ACC) |
+| Mali GPU / Interface block / Video | Acelerador MatMul (slave de registradores + sideband com o DMA) |
+| DMC-400 ×2 | `axi_mem_ctrl` ×2 (IMEM, DMEM) |
+| PHY + DDR3/2 LPDDR2 ×2 | SRAM IMEM e SRAM DMEM compartilhada |
+
+### Blocos
 
 | Bloco | Função |
 |-------|--------|
-| CPU RV32I | _..._ |
-| Interconexão / decodificador de endereços | _..._ |
-| Memória de instruções | _..._ |
-| Memória de dados compartilhada | _..._ |
-| DMA | _..._ |
-| Buffers locais (A, B, C) | _..._ |
-| Systolic array | _..._ |
+| CPU RV32I | Core multiciclo; Porta I só lê instruções, Porta D executa load/store. Apenas configura e dispara o DMA. |
+| `cpu_axi_adapter` | Converte a interface nativa valid/ready da CPU em AXI4-Lite. |
+| `axi_xbar` (interconexão / decodificador) | Decodifica `addr[31:28]`, arbitra os masters (round-robin) e roteia para IMEM, DMEM ou periféricos. |
+| `axi_periph_switch` | Decodifica `addr[15:12]` entre regs DMA (`0x4000_0000`) e regs ACC (`0x4000_1000`). |
+| `axi_mem_ctrl` | Slave AXI4-Lite que acessa a SRAM (suporta `WSTRB`). |
+| Memória de instruções | SRAM do firmware (`0x0000_0000`), carregada por `$readmemh`. |
+| Memória de dados compartilhada | SRAM (`0x1000_0000`) com as matrizes A, B e C, acessada por CPU e DMA. |
+| DMA | Master AXI4-Lite com FSM própria: lê A/B, alimenta o acelerador, lê C e a escreve na DMEM; sinaliza `done` e `irq`. |
+| Buffers locais (A, B, C) | Memórias internas do acelerador, escritas/lidas pelo DMA via sideband. |
+| Systolic array | Malha `ARRAY_SIZE×ARRAY_SIZE` de MACs (parâmetro de elaboração). |
 
 ## 2. Decisões de microarquitetura
 
 | Item | Decisão | Justificativa |
 |------|---------|---------------|
-| Pipeline da CPU | _ex.: multiciclo / 5 estágios_ | _..._ |
-| Barramento CPU ↔ periféricos | _ex.: handshake valid/ready_ | _..._ |
+| Pipeline da CPU | Multiciclo, duas portas (I e D) | Menor risco de implementação; espelha os 2 masters da figura de referência e evita arbitrar fetch × dados dentro da CPU |
+| Barramento CPU ↔ periféricos | AMBA AXI4-Lite, 32 bits, single-beat (sem ID/burst), 1 transação outstanding por master | Padrão pedido para o projeto; o DMA move uma palavra por transação (menor throughput, FSM e xbar mais simples) |
 | Largura dos operandos | _ex.: 8 bits com sinal_ | _..._ |
 | Largura do acumulador | _ex.: 32 bits_ | _evita overflow para N máximo_ |
-| `ARRAY_SIZE` | _2, 4 e 8_ | _..._ |
+| `ARRAY_SIZE` | 2, 4 e 8 | Parâmetro RTL só do acelerador; demais blocos independentes dele |
 | Fluxo de dados do array | _ex.: output-stationary_ | _..._ |
 | Estratégia de tiling | _..._ | _..._ |
 | Sinalização de término | _status + IRQ_ | _..._ |
