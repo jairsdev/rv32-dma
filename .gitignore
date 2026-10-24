@@ -1,0 +1,22 @@
+# Simulação / síntese
+*.vcd
+*.fst
+*.vvp
+*.wlf
+work/
+xcelium.d/
+simv*
+csrc/
+obj_dir/
+*.log
+!synth/**/*.log
+
+# Python / C
+__pycache__/
+*.o
+*.elf
+
+# Editor / SO
+.vscode/
+.DS_Store
+Thumbs.db
