@@ -1,0 +1,97 @@
+<mxfile host="app.diagrams.net" version="24.0.0">
+  <diagram id="top_level_handshake" name="Top-Level handshake">
+    <mxGraphModel dx="1120" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1120" pageHeight="680" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell vertex="1" parent="1" id="reg_core" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E6ECEC;strokeColor=none;fontSize=11;fontStyle=2;fontColor=#4A5555;align=left;verticalAlign=top;spacingLeft=8;spacingTop=4;">
+          <mxGeometry x="20" y="255" width="1080" height="110" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="cpu_i" value="CPU RV32I&lt;br&gt;Porta I (fetch)" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#0E8FB4;strokeColor=#0B6F8A;fontColor=#FFFFFF;">
+          <mxGeometry x="40" y="40" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="cpu_d" value="CPU RV32I&lt;br&gt;Porta D (load/store)" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#0E8FB4;strokeColor=#0B6F8A;fontColor=#FFFFFF;">
+          <mxGeometry x="220" y="40" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="dma" value="DMA Controller&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;FSM própria · porta master&lt;br&gt;+ regs DMA 0x4000_0000 (slave)&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#808285;strokeColor=#5A5C5E;fontColor=#FFFFFF;">
+          <mxGeometry x="420" y="40" width="220" height="110" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="acc" value="Acelerador MatMul&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;Buffers A/B/C + Systolic Array&lt;br&gt;ARRAY_SIZE×ARRAY_SIZE (2/4/8)&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#0E8FB4;strokeColor=#0B6F8A;fontColor=#FFFFFF;">
+          <mxGeometry x="880" y="30" width="200" height="100" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="xbar" value="bus_xbar&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;3 masters × 3 slaves · decode addr[31:28] · round-robin · valid/ready 32 bits&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#7ED321;strokeColor=#5FA316;fontColor=#1B2A05;">
+          <mxGeometry x="40" y="280" width="1040" height="60" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="mem_i" value="Memória de instruções&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;0x0000_0000 · firmware · 64 KiB&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#808285;strokeColor=#5A5C5E;fontColor=#FFFFFF;">
+          <mxGeometry x="100" y="410" width="300" height="60" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="mem_d" value="Memória de dados compartilhada&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;0x1000_0000 · matrizes A, B, C · 64 KiB&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#808285;strokeColor=#5A5C5E;fontColor=#FFFFFF;">
+          <mxGeometry x="450" y="410" width="300" height="60" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="e_m0" value="M0 · &lt;b&gt;/&lt;/b&gt; 32 · valid/ready" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.0721;entryY=0.0000;entryDx=0;entryDy=0;" source="cpu_i" target="xbar">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="e_m1" value="M1 · &lt;b&gt;/&lt;/b&gt; 32 · valid/ready" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.2452;entryY=0.0000;entryDx=0;entryDy=0;" source="cpu_d" target="xbar">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="e_m2" value="M2 · &lt;b&gt;/&lt;/b&gt; 32 · valid/ready" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;exitX=0.2727;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.4231;entryY=0.0000;entryDx=0;entryDy=0;" source="dma" target="xbar">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="e_s2" value="S2 · regs DMA 0x4000_0000&lt;br&gt;&lt;b&gt;/&lt;/b&gt; 32 · valid/ready" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;exitX=0.5192;exitY=0.0000;exitDx=0;exitDy=0;entryX=0.7273;entryY=1.0000;entryDx=0;entryDy=0;" source="xbar" target="dma">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="e_s0" value="S0 · IMEM&lt;br&gt;&lt;b&gt;/&lt;/b&gt; 32 · valid/ready" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;exitX=0.2019;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="xbar" target="mem_i">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="e_s1" value="S1 · DMEM&lt;br&gt;&lt;b&gt;/&lt;/b&gt; 32 · valid/ready" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;exitX=0.5385;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="xbar" target="mem_d">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="e_side" value="sideband&lt;br&gt;buf A/B: we, addr, data[8] · C: rd, data[32]&lt;br&gt;tile_start, first_k, busy, tile_done" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;dashed=1;strokeColor=#0E8FB4;exitX=1.0000;exitY=0.2000;exitDx=0;exitDy=0;entryX=0.0000;entryY=0.3200;entryDx=0;entryDy=0;" source="dma" target="acc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="e_irq" value="irq" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;dashed=1;startArrow=none;strokeColor=#D0021B;fontColor=#D0021B;exitX=0.0000;exitY=0.2727;exitDx=0;exitDy=0;entryX=1.0000;entryY=0.5000;entryDx=0;entryDy=0;" source="dma" target="cpu_d">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="leg_box" value="" style="rounded=0;html=1;fillColor=#FFFFFF;strokeColor=#BBBBBB;">
+          <mxGeometry x="800" y="410" width="300" height="200" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="leg_title" value="Legenda" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontStyle=1;fontSize=12;">
+          <mxGeometry x="810" y="415" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="leg_1" value="" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#0E8FB4;strokeColor=#0B6F8A;fontColor=#FFFFFF;">
+          <mxGeometry x="815" y="440" width="28" height="16" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="leg_1_t" value="CPU / Acelerador" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=11;">
+          <mxGeometry x="852" y="438" width="240" height="20" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="leg_2" value="" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#7ED321;strokeColor=#5FA316;fontColor=#1B2A05;">
+          <mxGeometry x="815" y="464" width="28" height="16" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="leg_2_t" value="Crossbar valid/ready" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=11;">
+          <mxGeometry x="852" y="462" width="240" height="20" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="leg_3" value="" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#808285;strokeColor=#5A5C5E;fontColor=#FFFFFF;">
+          <mxGeometry x="815" y="488" width="28" height="16" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="leg_3_t" value="DMA / memórias" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=11;">
+          <mxGeometry x="852" y="486" width="240" height="20" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="leg_l1" value="mestre→escravo: valid, addr, we, wstrb, wdata" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=11;">
+          <mxGeometry x="815" y="520" width="280" height="20" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="leg_l2" value="escravo→mestre: ready, rdata (transfere com valid=ready=1)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=11;">
+          <mxGeometry x="815" y="540" width="280" height="20" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="leg_l3" value="tracejado azul = sideband DMA→Acelerador" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=11;">
+          <mxGeometry x="815" y="560" width="280" height="20" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="leg_l4" value="tracejado vermelho = interrupção (irq)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=11;">
+          <mxGeometry x="815" y="580" width="280" height="20" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="title" value="&lt;b&gt;RV32I + DMA + Systolic Array — Top-Level (handshake valid/ready)&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=16;">
+          <mxGeometry x="20" y="620" width="800" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
