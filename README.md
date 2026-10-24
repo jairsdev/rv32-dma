@@ -211,3 +211,4 @@ Descreva brevemente cada bloco:
 
 - [Enunciado do projeto](docs/spec/enunciado.pdf)
 - The RISC-V Instruction Set Manual, Volume I: Unprivileged ISA
+- [PicoRV32](https://github.com/YosysHQ/picorv32) — core RV32I simples, referência de CPU e de interface de memória valid/ready
