@@ -8,11 +8,11 @@ Implementação em Verilog de um processador RISC-V RV32I com coprocessador de m
 
 | Nome | GitHub | Responsabilidade |
 |---|---|---|
-| Luiz Augusto dos Santos Oliveira | — | — |
-| Tássio Carvalho Rodrigues | — | — |
+| Gabriel Sena Barbosa Silva | — | — |
 | Jair Rocha Souza | — | — |
 | João Vítor Cedraz Carneiro | — | — |
-| Gabriel Sena Barbosa Silva | — | — |
+| Luiz Augusto dos Santos Oliveira | — | — |
+| Tássio Carvalho Rodrigues | — | — |
 
 ## Visão geral
 
