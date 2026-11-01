@@ -7,9 +7,12 @@ Implementação em Verilog de um processador RISC-V RV32I com coprocessador de m
 ## Equipe
 
 | Nome | GitHub | Responsabilidade |
-|------|--------|------------------|
-| _Nome_ | @usuario | _CPU / DMA / Acelerador / Verificação_ |
-| _Nome_ | @usuario | _..._ |
+|---|---|---|
+| Luiz Augusto dos Santos Oliveira | — | — |
+| Tássio Carvalho Rodrigues | — | — |
+| Jair Rocha Souza | — | — |
+| João Vítor Cedraz Carneiro | — | — |
+| Gabriel Sena Barbosa Silva | — | — |
 
 ## Visão geral
 
