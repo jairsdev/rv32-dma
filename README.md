@@ -59,7 +59,7 @@ Objetivo: garantir que o grupo entendeu o escopo e definiu como os módulos se c
   - [x] Diagrama de blocos detalhado do top-level (§1)
   - [x] Mapa de memória: matrizes e registradores do DMA/acelerador (§3)
   - [x] Especificação dos sinais de interface CPU ↔ DMA ↔ Acelerador (§4)
-- [ ] **Modelo de referência (golden model)** em C, C++ ou Python com multiplicação matricial por blocos (tiling) (§8)
+- [x] **Modelo de referência (golden model)** em Python com multiplicação matricial por blocos (tiling) e exportação .hex (§8)
 
 ---
 
@@ -428,7 +428,14 @@ int main(void) {
 - **Como executar:**
 
 ```bash
-# TODO (ex.: python3 model/golden.py --m 6 --k 5 --n 7 --t 4 --seed 1)
+# Execução padrão com dimensões customizadas:
+python model/golden.py --m 6 --k 5 --n 7 --t 4 --seed 1
+
+# Execução de um caso de teste pré-definido (ex.: caso 3):
+python model/golden.py --case 3
+
+# Validação automática de todos os casos e parametrizações (autocheck):
+python model/golden.py --test-all
 ```
 
 ### Casos de teste previstos
