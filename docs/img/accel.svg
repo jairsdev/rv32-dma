@@ -1,0 +1,262 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif" width="1100" height="670" viewBox="0 0 1100 670">
+  <defs>
+    <marker id="m_fill_0E8FB4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0E8FB4" />
+    </marker>
+    <marker id="m_fill_333333" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#333333" />
+    </marker>
+  </defs>
+  <rect x="0" y="0" fill="#FFFFFF" width="1100" height="670" />
+  <rect x="20" y="10" width="1060" height="640" fill="#E6ECEC" stroke="none" stroke-width="1" />
+  <text x="28.0" y="24.7" text-anchor="start" fill="#4A5555" font-style="italic">
+    <tspan font-size="11" font-weight="normal">Acelerador MatMul — exemplo com T = ARRAY_SIZE = 4 · output-stationary</tspan>
+  </text>
+  <rect x="315" y="185" width="370" height="300" fill="#D5E3E6" stroke="none" stroke-width="1" />
+  <text x="323.0" y="478.0" text-anchor="start" fill="#4A5555" font-style="italic">
+    <tspan font-size="11" font-weight="normal">malha T×T de PEs · acc int32 em cada PE = banco C</tspan>
+  </text>
+  <rect x="40" y="40" width="200" height="100" fill="#808285" stroke="#5A5C5E" stroke-width="1" rx="10.0" ry="10.0" />
+  <text x="140.0" y="79.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">DMA</tspan>
+  </text>
+  <text x="140.0" y="94.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">escrita dos buffers</tspan>
+  </text>
+  <text x="140.0" y="109.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">(sideband)</tspan>
+  </text>
+  <rect x="330" y="40" width="340" height="50" fill="#808285" stroke="#5A5C5E" stroke-width="1" rx="7.5" ry="7.5" />
+  <text x="500.0" y="61.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">buf B (T×T int8)</tspan>
+  </text>
+  <text x="500.0" y="76.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">leitura: linha k → T elementos</tspan>
+  </text>
+  <rect x="330" y="120" width="340" height="40" fill="#1CC0DD" stroke="#119BB3" stroke-width="1" rx="6.0" ry="6.0" />
+  <text x="500.0" y="143.8" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="bold">skew B: coluna j atrasada j ciclos</tspan>
+  </text>
+  <rect x="40" y="210" width="120" height="250" fill="#808285" stroke="#5A5C5E" stroke-width="1" rx="10.0" ry="10.0" />
+  <text x="100.0" y="301.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">buf A</tspan>
+  </text>
+  <text x="100.0" y="316.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">T×T int8</tspan>
+  </text>
+  <text x="100.0" y="346.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">leitura:</tspan>
+  </text>
+  <text x="100.0" y="361.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">coluna k →</tspan>
+  </text>
+  <text x="100.0" y="376.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">T elementos</tspan>
+  </text>
+  <rect x="180" y="210" width="100" height="250" fill="#1CC0DD" stroke="#119BB3" stroke-width="1" rx="10.0" ry="10.0" />
+  <text x="230.0" y="316.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">skew A</tspan>
+  </text>
+  <text x="230.0" y="331.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">linha i</tspan>
+  </text>
+  <text x="230.0" y="346.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">atrasada</tspan>
+  </text>
+  <text x="230.0" y="361.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">i ciclos</tspan>
+  </text>
+  <polyline points="100,140 100,210" fill="none" stroke="#0E8FB4" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#m_fill_0E8FB4)" />
+  <polyline points="240,65 330,65" fill="none" stroke="#0E8FB4" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#m_fill_0E8FB4)" />
+  <polyline points="500,90 500,120" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="160,335 180,335" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <rect x="330" y="215" width="70" height="45" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="6.8" ry="6.8" />
+  <text x="365.0" y="241.3" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="bold">PE00</tspan>
+  </text>
+  <polyline points="280,237 330,237" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="365,160 365,215" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <rect x="420" y="215" width="70" height="45" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="6.8" ry="6.8" />
+  <text x="455.0" y="241.3" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="bold">PE01</tspan>
+  </text>
+  <polyline points="400,237 420,237" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="455,160 455,215" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <rect x="510" y="215" width="70" height="45" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="6.8" ry="6.8" />
+  <text x="545.0" y="241.3" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="bold">PE02</tspan>
+  </text>
+  <polyline points="490,237 510,237" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="545,160 545,215" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <rect x="600" y="215" width="70" height="45" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="6.8" ry="6.8" />
+  <text x="635.0" y="241.3" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="bold">PE03</tspan>
+  </text>
+  <polyline points="580,237 600,237" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="635,160 635,215" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <rect x="330" y="280" width="70" height="45" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="6.8" ry="6.8" />
+  <text x="365.0" y="306.4" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="bold">PE10</tspan>
+  </text>
+  <polyline points="280,302 330,302" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="365,260 365,280" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <rect x="420" y="280" width="70" height="45" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="6.8" ry="6.8" />
+  <text x="455.0" y="306.4" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="bold">PE11</tspan>
+  </text>
+  <polyline points="400,302 420,302" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="455,260 455,280" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <rect x="510" y="280" width="70" height="45" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="6.8" ry="6.8" />
+  <text x="545.0" y="306.4" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="bold">PE12</tspan>
+  </text>
+  <polyline points="490,302 510,302" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="545,260 545,280" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <rect x="600" y="280" width="70" height="45" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="6.8" ry="6.8" />
+  <text x="635.0" y="306.4" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="bold">PE13</tspan>
+  </text>
+  <polyline points="580,302 600,302" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="635,260 635,280" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <rect x="330" y="345" width="70" height="45" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="6.8" ry="6.8" />
+  <text x="365.0" y="371.4" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="bold">PE20</tspan>
+  </text>
+  <polyline points="280,367 330,367" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="365,325 365,345" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <rect x="420" y="345" width="70" height="45" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="6.8" ry="6.8" />
+  <text x="455.0" y="371.4" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="bold">PE21</tspan>
+  </text>
+  <polyline points="400,367 420,367" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="455,325 455,345" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <rect x="510" y="345" width="70" height="45" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="6.8" ry="6.8" />
+  <text x="545.0" y="371.4" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="bold">PE22</tspan>
+  </text>
+  <polyline points="490,367 510,367" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="545,325 545,345" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <rect x="600" y="345" width="70" height="45" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="6.8" ry="6.8" />
+  <text x="635.0" y="371.4" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="bold">PE23</tspan>
+  </text>
+  <polyline points="580,367 600,367" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="635,325 635,345" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <rect x="330" y="410" width="70" height="45" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="6.8" ry="6.8" />
+  <text x="365.0" y="436.4" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="bold">PE30</tspan>
+  </text>
+  <polyline points="280,432 330,432" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="365,390 365,410" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <rect x="420" y="410" width="70" height="45" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="6.8" ry="6.8" />
+  <text x="455.0" y="436.4" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="bold">PE31</tspan>
+  </text>
+  <polyline points="400,432 420,432" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="455,390 455,410" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <rect x="510" y="410" width="70" height="45" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="6.8" ry="6.8" />
+  <text x="545.0" y="436.4" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="bold">PE32</tspan>
+  </text>
+  <polyline points="490,432 510,432" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="545,390 545,410" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <rect x="600" y="410" width="70" height="45" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="6.8" ry="6.8" />
+  <text x="635.0" y="436.4" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="bold">PE33</tspan>
+  </text>
+  <polyline points="580,432 600,432" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="635,390 635,410" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <rect x="740" y="210" width="150" height="250" fill="#1CC0DD" stroke="#119BB3" stroke-width="1" rx="10.0" ry="10.0" />
+  <text x="815.0" y="316.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">mux C</tspan>
+  </text>
+  <text x="815.0" y="331.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">T² acumuladores</tspan>
+  </text>
+  <text x="815.0" y="346.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">int32, escolhidos</tspan>
+  </text>
+  <text x="815.0" y="361.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">por (c_row, c_col)</tspan>
+  </text>
+  <rect x="920" y="280" width="150" height="110" fill="#808285" stroke="#5A5C5E" stroke-width="1" rx="10.0" ry="10.0" />
+  <text x="995.0" y="324.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">DMA</tspan>
+  </text>
+  <text x="995.0" y="339.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">c_rd, c_row, c_col →</tspan>
+  </text>
+  <text x="995.0" y="354.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">← c_rdata[31:0]</tspan>
+  </text>
+  <polyline points="685,335 740,335" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="890,335 920,335" fill="none" stroke="#0E8FB4" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#m_fill_0E8FB4)" marker-start="url(#m_fill_0E8FB4)" />
+  <rect x="360" y="520" width="310" height="70" fill="#7ED321" stroke="#5FA316" stroke-width="1" rx="10.0" ry="10.0" />
+  <text x="515.0" y="544.2" text-anchor="middle" fill="#1B2A05">
+    <tspan font-size="12" font-weight="bold">controle do tile</tspan>
+  </text>
+  <text x="515.0" y="559.2" text-anchor="middle" fill="#1B2A05">
+    <tspan font-size="11" font-weight="normal">contador t = 0 … 3T−2 · en dos PEs</tspan>
+  </text>
+  <text x="515.0" y="574.2" text-anchor="middle" fill="#1B2A05">
+    <tspan font-size="11" font-weight="normal">first_k → clr_acc no tile_start</tspan>
+  </text>
+  <rect x="40" y="520" width="170" height="70" fill="#808285" stroke="#5A5C5E" stroke-width="1" rx="10.0" ry="10.0" />
+  <text x="125.0" y="551.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">DMA</tspan>
+  </text>
+  <text x="125.0" y="566.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">controle do tile</tspan>
+  </text>
+  <polyline points="210,555 360,555" fill="none" stroke="#0E8FB4" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#m_fill_0E8FB4)" marker-start="url(#m_fill_0E8FB4)" />
+  <polyline points="500,520 500,485" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <rect x="740" y="500" width="330" height="130" fill="#FFFFFF" stroke="#0B6F8A" stroke-width="1" rx="10.0" ry="10.0" />
+  <text x="748.0" y="541.4" text-anchor="start" fill="#1A1A1A">
+    <tspan font-size="11" font-weight="bold">PE(i,j)</tspan>
+  </text>
+  <text x="748.0" y="555.1" text-anchor="start" fill="#1A1A1A">
+    <tspan font-size="11" font-weight="normal">a_out ← a_in · b_out ← b_in (registrados)</tspan>
+  </text>
+  <text x="748.0" y="568.9" text-anchor="start" fill="#1A1A1A">
+    <tspan font-size="11" font-weight="normal">acc ← acc + a_in × b_in</tspan>
+  </text>
+  <text x="748.0" y="582.6" text-anchor="start" fill="#1A1A1A">
+    <tspan font-size="11" font-weight="normal">a, b: int8 · produto: int16 · acc: int32</tspan>
+  </text>
+  <text x="748.0" y="596.4" text-anchor="start" fill="#1A1A1A">
+    <tspan font-size="11" font-weight="normal">clr_acc (first_k = 1) zera acc antes do tile</tspan>
+  </text>
+  <text x="44.0" y="618.9" text-anchor="start" fill="#000000">
+    <tspan font-size="11" font-weight="normal">Latência de um tile: 1 ciclo (clr_acc) + T passos + 2(T−1) de skew = 3T−1 ciclos</tspan>
+  </text>
+  <rect x="62.4" y="161.5" width="75.2" height="27.0" fill="#FFFFFF" />
+  <text x="100.0" y="172.2" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">A: we, row,</tspan>
+  </text>
+  <text x="100.0" y="184.8" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">col, data[8]</tspan>
+  </text>
+  <rect x="247.4" y="51.5" width="75.2" height="27.0" fill="#FFFFFF" />
+  <text x="285.0" y="62.2" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">B: we, row,</tspan>
+  </text>
+  <text x="285.0" y="74.8" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">col, data[8]</tspan>
+  </text>
+  <rect x="688.9" y="327.8" width="47.2" height="14.5" fill="#FFFFFF" />
+  <text x="712.5" y="338.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">T² × 32</tspan>
+  </text>
+  <rect x="222.2" y="541.5" width="125.6" height="27.0" fill="#FFFFFF" />
+  <text x="285.0" y="552.2" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">tile_start, first_k →</tspan>
+  </text>
+  <text x="285.0" y="564.8" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">← busy, tile_done</tspan>
+  </text>
+  <rect x="465.2" y="495.2" width="69.6" height="14.5" fill="#FFFFFF" />
+  <text x="500.0" y="506.0" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">en, clr_acc</tspan>
+  </text>
+</svg>

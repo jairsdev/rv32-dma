@@ -1,0 +1,135 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif" width="960" height="800" viewBox="0 0 960 800">
+  <defs>
+    <marker id="m_fill_333333" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#333333" />
+    </marker>
+    <marker id="m_open_333333" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10" fill="none" stroke="#333333" stroke-width="1.5" />
+    </marker>
+    <marker id="m_fill_D0021B" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#D0021B" />
+    </marker>
+  </defs>
+  <rect x="0" y="0" fill="#FFFFFF" width="960" height="800" />
+  <rect x="310" y="215" width="630" height="420" fill="none" stroke="#888888" stroke-width="1" stroke-dasharray="6,4" />
+  <text x="318.0" y="229.7" text-anchor="start" fill="#4A5555" font-style="italic">
+    <tspan font-size="11" font-weight="normal">loop [cada tile (i0, j0)]</tspan>
+  </text>
+  <rect x="325" y="245" width="600" height="245" fill="none" stroke="#888888" stroke-width="1" stroke-dasharray="6,4" />
+  <text x="333.0" y="259.7" text-anchor="start" fill="#4A5555" font-style="italic">
+    <tspan font-size="11" font-weight="normal">loop [cada bloco k0]</tspan>
+  </text>
+  <rect x="99" y="60" width="2" height="720" fill="#BBBBBB" stroke="none" stroke-width="1" />
+  <rect x="30" y="20" width="140" height="40" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="6.0" ry="6.0" />
+  <text x="100.0" y="44.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">CPU RV32I</tspan>
+  </text>
+  <rect x="289" y="60" width="2" height="720" fill="#BBBBBB" stroke="none" stroke-width="1" />
+  <rect x="220" y="20" width="140" height="40" fill="#808285" stroke="#5A5C5E" stroke-width="1" rx="6.0" ry="6.0" />
+  <text x="290.0" y="44.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">Regs DMA (S1)</tspan>
+  </text>
+  <rect x="479" y="60" width="2" height="720" fill="#BBBBBB" stroke="none" stroke-width="1" />
+  <rect x="410" y="20" width="140" height="40" fill="#808285" stroke="#5A5C5E" stroke-width="1" rx="6.0" ry="6.0" />
+  <text x="480.0" y="44.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">DMA</tspan>
+  </text>
+  <rect x="669" y="60" width="2" height="720" fill="#BBBBBB" stroke="none" stroke-width="1" />
+  <rect x="600" y="20" width="140" height="40" fill="#808285" stroke="#5A5C5E" stroke-width="1" rx="6.0" ry="6.0" />
+  <text x="670.0" y="44.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">DMEM</tspan>
+  </text>
+  <rect x="859" y="60" width="2" height="720" fill="#BBBBBB" stroke="none" stroke-width="1" />
+  <rect x="790" y="20" width="140" height="40" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="6.0" ry="6.0" />
+  <text x="860.0" y="44.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">Acelerador</tspan>
+  </text>
+  <polyline points="100,95 290,95" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="100,135 290,135" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="290,175 480,175" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <rect x="40" y="195" width="120" height="30" fill="#FFF8DC" stroke="#C9B458" stroke-width="1" />
+  <text x="100.0" y="213.8" text-anchor="middle" fill="#1A1A1A">
+    <tspan font-size="11" font-weight="normal">wfi → WAIT</tspan>
+  </text>
+  <polyline points="480,285 670,285" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="670,315 480,315" fill="none" stroke="#333333" stroke-width="1" stroke-dasharray="6,4" marker-end="url(#m_open_333333)" />
+  <polyline points="480,350 860,350" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="480,390 860,390" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <rect x="790" y="405" width="140" height="30" fill="#FFF8DC" stroke="#C9B458" stroke-width="1" />
+  <text x="860.0" y="423.9" text-anchor="middle" fill="#1A1A1A">
+    <tspan font-size="11" font-weight="normal">3T−1 ciclos</tspan>
+  </text>
+  <polyline points="860,465 480,465" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="480,520 860,520" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="860,550 480,550" fill="none" stroke="#333333" stroke-width="1" stroke-dasharray="6,4" marker-end="url(#m_open_333333)" />
+  <polyline points="480,585 670,585" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="670,612 480,612" fill="none" stroke="#333333" stroke-width="1" stroke-dasharray="6,4" marker-end="url(#m_open_333333)" />
+  <polyline points="480,670 100,670" fill="none" stroke="#D0021B" stroke-width="1" marker-end="url(#m_fill_D0021B)" />
+  <polyline points="100,710 290,710" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="100,750 290,750" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <rect x="300" y="735" width="70" height="30" fill="#FFF8DC" stroke="#C9B458" stroke-width="1" />
+  <text x="335.0" y="753.9" text-anchor="middle" fill="#1A1A1A">
+    <tspan font-size="11" font-weight="normal">irq = 0</tspan>
+  </text>
+  <rect x="123.8" y="77.8" width="142.4" height="14.5" fill="#FFFFFF" />
+  <text x="195.0" y="88.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">sw ADDR_A/B/C, DIM_M/N/K</tspan>
+  </text>
+  <rect x="123.8" y="117.8" width="142.4" height="14.5" fill="#FFFFFF" />
+  <text x="195.0" y="128.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">sw CTRL = START | IRQ_EN</tspan>
+  </text>
+  <rect x="367.0" y="157.8" width="36.0" height="14.5" fill="#FFFFFF" />
+  <text x="385.0" y="168.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">start</tspan>
+  </text>
+  <rect x="517.8" y="267.8" width="114.4" height="14.5" fill="#FFFFFF" />
+  <text x="575.0" y="278.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">AR: linhas de A e B</tspan>
+  </text>
+  <rect x="506.6" y="297.8" width="136.8" height="14.5" fill="#FFFFFF" />
+  <text x="575.0" y="308.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">R: 4 × int8 por palavra</tspan>
+  </text>
+  <rect x="582.0" y="332.8" width="176.0" height="14.5" fill="#FFFFFF" />
+  <text x="670.0" y="343.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">buf A/B: we, row, col, data[8]</tspan>
+  </text>
+  <rect x="584.8" y="372.8" width="170.4" height="14.5" fill="#FFFFFF" />
+  <text x="670.0" y="383.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">tile_start (first_k = k0 = 0)</tspan>
+  </text>
+  <rect x="640.8" y="447.8" width="58.4" height="14.5" fill="#FFFFFF" />
+  <text x="670.0" y="458.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">tile_done</tspan>
+  </text>
+  <rect x="615.6" y="502.8" width="108.8" height="14.5" fill="#FFFFFF" />
+  <text x="670.0" y="513.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">c_rd, c_row, c_col</tspan>
+  </text>
+  <rect x="629.6" y="532.8" width="80.8" height="14.5" fill="#FFFFFF" />
+  <text x="670.0" y="543.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">c_rdata[31:0]</tspan>
+  </text>
+  <rect x="523.4" y="567.8" width="103.2" height="14.5" fill="#FFFFFF" />
+  <text x="575.0" y="578.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">AW + W: C (int32)</tspan>
+  </text>
+  <rect x="551.4" y="594.8" width="47.2" height="14.5" fill="#FFFFFF" />
+  <text x="575.0" y="605.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">B: OKAY</tspan>
+  </text>
+  <rect x="188.0" y="652.8" width="204.0" height="14.5" fill="#FFFFFF" />
+  <text x="290.0" y="663.5" text-anchor="middle" fill="#D0021B">
+    <tspan font-size="10" font-weight="normal">irq = DONE ∧ IRQ_EN (acorda do wfi)</tspan>
+  </text>
+  <rect x="135.0" y="692.8" width="120.0" height="14.5" fill="#FFFFFF" />
+  <text x="195.0" y="703.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">lw STATUS (DONE = 1)</tspan>
+  </text>
+  <rect x="129.4" y="732.8" width="131.2" height="14.5" fill="#FFFFFF" />
+  <text x="195.0" y="743.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">sw STATUS = DONE (W1C)</tspan>
+  </text>
+</svg>
