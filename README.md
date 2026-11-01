@@ -2,14 +2,17 @@
 
 Implementação em Verilog de um processador RISC-V RV32I com coprocessador de multiplicação matricial e controlador DMA baseado em systolic array, desenvolvido no Programa CI Digital da CEPEDI.
 
-> **Status:** 🚧 Entrega 1 em andamento (prazo: 01/11/2026)
+> **Status:** ✅ Entregas 1 e 2 concluídas (próxima etapa: Entrega 3 — DMA e Memória Compartilhada)
 
 ## Equipe
 
 | Nome | GitHub | Responsabilidade |
-|------|--------|------------------|
-| _Nome_ | @usuario | _CPU / DMA / Acelerador / Verificação_ |
-| _Nome_ | @usuario | _..._ |
+|---|:---:|:---:|
+| Gabriel Sena Barbosa Silva | [@Gabriel-SBS](https://github.com/Gabriel-SBS) | — |
+| Jair Rocha Souza | [@jairsdev](https://github.com/jairsdev) | — |
+| João Vítor Cedraz Carneiro | [@JvCedrazC](https://github.com/JvCedrazC) | — |
+| Luiz Augusto dos Santos Oliveira | [@guto7191](https://github.com/guto7191) | — |
+| Tássio Carvalho Rodrigues | [@tassiocarvalho](https://github.com/tassiocarvalho) | — |
 
 ## Visão geral
 
@@ -54,12 +57,21 @@ Objetivo: garantir que o grupo entendeu o escopo e definiu como os módulos se c
 
 ## Checklist
 
+### Entrega 1 — Planejamento, Microarquitetura e Modelo de Referência
 - [x] **Repositório GitHub**: criação, estrutura de diretórios e primeiro commit
 - [x] **Especificação** (este README)
   - [x] Diagrama de blocos detalhado do top-level (§1)
   - [x] Mapa de memória: matrizes e registradores do DMA/acelerador (§3)
   - [x] Especificação dos sinais de interface CPU ↔ DMA ↔ Acelerador (§4)
 - [x] **Modelo de referência (golden model)** em Python com multiplicação matricial por blocos (tiling) e exportação .hex (§8)
+
+### Entrega 2 — RTL do Acelerador (Systolic Array) e Testes Unitários
+- [x] **Código RTL do Acelerador**:
+  - [x] Unidade MAC / PE ([`rtl/accel/pe.v`](rtl/accel/pe.v)): operandos int8, acumulador int32, output-stationary
+  - [x] Malha sistólica parametrizável ([`rtl/accel/accel.v`](rtl/accel/accel.v)): buffers locais de A e B, registradores de skew, FSM com latência 3T-1 ciclos
+- [x] **Testbench Unitário**:
+  - [x] Simulação com autocheck ([`tb/unit_accel/tb_accel.v`](tb/unit_accel/tb_accel.v)) simulando injeção de dados pelo DMA
+  - [x] Validação comprovada para malhas 2×2 (com múltiplos blocos de K) e 4×4
 
 ---
 
@@ -300,6 +312,13 @@ Fonte editável: [`docs/img/accel.drawio`](docs/img/accel.drawio).
 - **O que escala com T:** T² MACs (multiplicador 8×8 + somador 32 bits), 2T² bytes de buffer, T² acumuladores de 32 bits e o mux de C. O caminho crítico do PE (multiplicador + somador) não depende de T; o mux de C cresce com log T.
 - **Ciclos de cálculo** para M×N×K: ⌈M/T⌉ · ⌈N/T⌉ · ⌈K/T⌉ tiles de 3T − 1 ciclos. O restante da latência é do DMA (2T² bytes por bloco k0 e T² palavras de C por tile) e é medido no registrador `CYCLES`.
 
+### Como simular o testbench unitário do acelerador
+
+```bash
+iverilog -g2012 -o sim_accel.vvp tb/unit_accel/tb_accel.v rtl/accel/pe.v rtl/accel/accel.v
+vvp sim_accel.vvp
+```
+
 ## 6. Máquina de estados do DMA
 
 ![FSM do DMA](docs/img/dma_fsm.svg)
@@ -452,10 +471,10 @@ python model/golden.py --test-all
 ## 9. Plano de trabalho
 
 | Entrega | Prazo | Conteúdo | Responsável | Status |
-|---------|-------|----------|-------------|--------|
-| 1 | 01/11/2026 | Planejamento, microarquitetura e golden model | | ⏳ |
-| 2 | 14/11/2026 | RTL do MAC/systolic array + testbench unitário (2×2 e 4×4) | | ⬜ |
-| 3 | 22/11/2026 | RTL do DMA e memória compartilhada + testbench integrado sem CPU | | ⬜ |
+|---|---|---|---|:---:|
+| 1 | 01/11/2026 | Planejamento, microarquitetura e golden model | | ✅ |
+| 2 | 14/11/2026 | RTL do MAC/systolic array + testbench unitário (2×2 e 4×4) | | ✅ |
+| 3 | 22/11/2026 | RTL do DMA e memória compartilhada + testbench integrado sem CPU | | ⏳ |
 | 4 | 13/12/2026 | Top-level, firmware e UVM integrado | | ⬜ |
 | Final | 18–19/12/2026 | Relatório técnico, síntese (≥ 3 configurações) e apresentação | | ⬜ |
 
