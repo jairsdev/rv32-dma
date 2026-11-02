@@ -8,11 +8,11 @@ Implementação em Verilog de um processador RISC-V RV32I com coprocessador de m
 
 | Nome | GitHub | Responsabilidade |
 |---|:---:|:---:|
-| Gabriel Sena Barbosa Silva | [@Gabriel-SBS](https://github.com/Gabriel-SBS) | — |
-| Jair Rocha Souza | [@jairsdev](https://github.com/jairsdev) | — |
-| João Vítor Cedraz Carneiro | [@JvCedrazC](https://github.com/JvCedrazC) | — |
-| Luiz Augusto dos Santos Oliveira | [@guto7191](https://github.com/guto7191) | — |
-| Tássio Carvalho Rodrigues | [@tassiocarvalho](https://github.com/tassiocarvalho) | — |
+| Gabriel Sena Barbosa Silva | [@Gabriel-SBS](https://github.com/Gabriel-SBS) | Verificação e Testbenches |
+| Jair Rocha Souza | [@jairsdev](https://github.com/jairsdev) | Firmware, Síntese Lógica e Verificação |
+| João Vítor Cedraz Carneiro | [@JvCedrazC](https://github.com/JvCedrazC) | Interconexão, AXI e Verificação |
+| Luiz Augusto dos Santos Oliveira | [@guto7191](https://github.com/guto7191) | Controlador DMA |
+| Tássio Carvalho Rodrigues | [@tassiocarvalho](https://github.com/tassiocarvalho) | Processador RV32I |
 
 ## Visão geral
 
@@ -472,11 +472,11 @@ python model/golden.py --test-all
 
 | Entrega | Prazo | Conteúdo | Responsável | Status |
 |---|---|---|---|:---:|
-| 1 | 01/11/2026 | Planejamento, microarquitetura e golden model | | ✅ |
-| 2 | 14/11/2026 | RTL do MAC/systolic array + testbench unitário (2×2 e 4×4) | | ✅ |
-| 3 | 22/11/2026 | RTL do DMA e memória compartilhada + testbench integrado sem CPU | | ⏳ |
-| 4 | 13/12/2026 | Top-level, firmware e UVM integrado | | ⬜ |
-| Final | 18–19/12/2026 | Relatório técnico, síntese (≥ 3 configurações) e apresentação | | ⬜ |
+| 1 | 01/11/2026 | Planejamento, microarquitetura e golden model | Equipe | ✅ |
+| 2 | 14/11/2026 | RTL do MAC/systolic array + testbench unitário (2×2 e 4×4) | Equipe | ✅ |
+| 3 | 22/11/2026 | RTL do DMA e memória compartilhada + testbench integrado sem CPU | Augusto, Cedraz, Gabriel, Jair | ⏳ |
+| 4 | 13/12/2026 | Top-level, firmware e UVM integrado | Tássio, Jair, Gabriel, Cedraz | ⬜ |
+| Final | 18–19/12/2026 | Relatório técnico, síntese (≥ 3 configurações) e apresentação | Equipe (liderado por Jair e Gabriel) | ⬜ |
 
 ## 10. Riscos e dúvidas em aberto
 
