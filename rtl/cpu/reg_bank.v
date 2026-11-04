@@ -20,8 +20,8 @@ module reg_bank (
     assign rs1_o = (rs1 == 5'd0) ? 32'd0 : mem[rs1];
     assign rs2_o = (rs2 == 5'd0) ? 32'd0 : mem[rs2];
 
-    // escrita síncrona, reset síncrono ativo em nível baixo
-    always @(posedge clk) begin
+    // escrita síncrona, reset assíncrono ativo em nível baixo (como o resto da CPU)
+    always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             for (i = 0; i < 32; i = i + 1)
                 mem[i] <= 32'd0;

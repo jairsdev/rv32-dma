@@ -41,6 +41,7 @@ O sistema calcula **C = A × B**. A CPU apenas configura os endereços e dimens�
 ├── sw/            # Firmware (C/Assembly RISC-V)
 ├── tb/
 │   ├── unit_accel/  # Testbench unitário do acelerador
+│   ├── unit_cpu/    # Testbenches da CPU (programas RV32I, wfi/irq, IMEM)
 │   ├── unit_dma/    # Testbench DMA + memória + acelerador
 │   └── uvm/         # Ambiente UVM integrado
 ├── scripts/       # Geração de diagramas, Makefiles e scripts de simulação
@@ -480,10 +481,12 @@ python model/golden.py --test-all
 
 ## 10. Riscos e dúvidas em aberto
 
-- **CPU:** o RTL atual em [`rtl/cpu/`](rtl/cpu/) é single-cycle, com IMEM/DMEM internas e só LW/SW. Para ser RV32I completo e seguir esta especificação, precisa de:
+- **CPU:** ✅ resolvido. O RTL em [`rtl/cpu/`](rtl/cpu/) agora segue esta especificação:
   - FSM multiciclo com as portas I/D valid/ready;
   - estado WAIT para o `wfi`;
   - LB/LH/LBU/LHU/SB/SH, via `d_wstrb`.
+
+  Detalhes e testes em [`rtl/cpu/README.md`](rtl/cpu/README.md).
 - **Síntese:** memórias de 64 KiB em flip-flops dominariam a área e esconderiam a diferença entre as configurações. Proposta: sintetizar o acelerador (e o DMA) para T = 2, 4 e 8, com as SRAMs como modelos comportamentais fora da síntese. A ferramenta de síntese ainda não foi definida.
 - **AXI4-Lite:** violações de handshake (`VALID` dependente de `READY`, `VALID` caindo antes do handshake) travam o xbar. Mitigação: assertions nos testbenches unitários.
 - **Desempenho:** com AXI4-Lite single-beat e uma transação por vez, o DMA domina a latência. A comparação de ciclos entre as configurações deve mostrar isso. Buffers ping-pong ficam como melhoria futura.

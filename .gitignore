@@ -20,3 +20,12 @@ __pycache__/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Cadence Xcelium / SimVision
+build/
+*.shm/
+*.history
+*.diag
+xrun.key
+.simvision/
+!scripts/simvision_*.tcl
