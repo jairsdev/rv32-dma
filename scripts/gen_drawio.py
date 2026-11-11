@@ -229,54 +229,59 @@ def dma_blocks():
 def dma_ctrl_fsm():
     d = Diagram("dma_ctrl_fsm", "dma_ctrl", 1000, 540)
     v, e = d.vertex, d.edge
-    _st(v, "idle", "IDLE", "busy = 0", 300, 40)
-    _st(v, "check", "CHECK", "dimensões ≥ 1 · ADDR alinhados · strides", 300, 140)
+    _st(v, "idle", "IDLE", "ctrl_busy = 0", 300, 40)
+    _st(v, "check", "CHECK", "valida DIM/ADDR · strides · bank_clr", 300, 140)
     _st(v, "run", "RUN", "run = 1 · load, compute, store ativos", 300, 240)
     _st(v, "done", "DONE", "pulso done → STATUS.DONE, irq", 300, 440, ST_STATE_END)
-    _st(v, "drain", "DRAIN", "stop = 1 · termina bursts e tile", 650, 240, ST_STATE_ERR)
+    _st(v, "drain", "DRAIN", "stop = 1 · FSMs param na linha", 650, 240, ST_STATE_ERR)
     _st(v, "error", "ERROR", "STATUS.ERROR = 1 · ERR_CODE", 650, 340, ST_STATE_ERR)
 
     e("t1", "idle", "check", (430, 100), (430, 140), "start", ST_TRANS)
     e("t2", "check", "run", (430, 200), (430, 240), "config válida", ST_TRANS)
     e("t3", "check", "error", (560, 170), (910, 370), "dimensão 0 (1) ·<br>desalinhado (2)", ERR,
       via=[(950, 170), (950, 370)], offset=(0, -40))
+    e("t10", "check", "idle", (520, 140), (520, 100), "soft_reset", ST_TRANS, offset=(35, 0))
     e("t4", "run", "drain", (560, 270), (650, 270), "rd_err · wr_err<br>· soft_reset", ERR, offset=(0, -25))
-    e("t5", "drain", "error", (780, 300), (780, 340), "ociosos ∧ erro", ERR, offset=(50, 0))
-    e("t6", "drain", "idle", (780, 240), (560, 70), "ociosos ∧ soft_reset", ST_TRANS, via=[(780, 70)])
+    e("t5", "drain", "error", (780, 300), (780, 340), "quieto ∧ erro", ERR, offset=(50, 0))
+    e("t6", "drain", "idle", (780, 240), (560, 70), "quieto ∧ soft_reset", ST_TRANS, via=[(780, 70)])
     e("t7", "error", "done", (780, 400), (560, 470), "1 ciclo", ST_TRANS, via=[(780, 470)])
     e("t8", "run", "done", (430, 300), (430, 440), "load_end ∧ compute_end<br>∧ store_end", ST_TRANS)
     e("t9", "done", "idle", (300, 470), (300, 70), "1 ciclo", ST_TRANS, via=[(200, 470), (200, 70)])
-    v("note", "ociosos = rd_idle ∧ wr_idle ∧ ¬busy ∧ ¬c_valid", 40, 500, 500, 25, ST_TEXT + "fontSize=11;")
+    v("note", "quieto = load_end ∧ compute_end ∧ store_end ∧ rd_idle ∧ wr_idle ∧ ¬acc_busy ∧ ¬c_valid",
+      40, 500, 760, 25, ST_TEXT + "fontSize=11;")
     return d
 
 
 def dma_load_fsm():
-    d = Diagram("dma_load_fsm", "dma_load", 1100, 780)
+    d = Diagram("dma_load_fsm", "dma_load", 1100, 720)
     v, e = d.vertex, d.edge
     _st(v, "idle", "L_IDLE", "—", 320, 40)
     _st(v, "wait", "L_WAIT_BANK", "espera banco ld_ptr livre", 320, 140)
-    _st(v, "row", "L_ROW", "rd_cmd: addr, nbytes, sel, bank, row", 320, 240)
-    _st(v, "wrd", "L_WAIT_RD", "espera rd_done", 320, 340)
-    _st(v, "nxt", "L_NEXT_ROW", "r += 1 · ptr += STRIDE", 320, 440)
-    _st(v, "blk", "L_BLOCK_DONE", "banco → FULL (first_k, last_k)<br>ld_ptr ^= PINGPONG · avança k0/j0/i0",
-        320, 560, h=70)
-    _st(v, "end", "L_END", "load_end = 1", 320, 690, ST_STATE_END)
+    _st(v, "row", "L_ROW", "rd_cmd por ciclo: addr, nbytes, sel, bank, row", 320, 240)
+    _st(v, "wblk", "L_WAIT_BLK", "espera rows_done = 2T", 320, 360)
+    _st(v, "blk", "L_BLOCK_DONE", "banco → FULL (first_k, last_k, last_blk)<br>ld_ptr ^= PINGPONG · avança k0/j0/i0",
+        320, 480, h=70)
+    _st(v, "end", "L_END", "load_end = 1", 320, 620, ST_STATE_END)
+    _st(v, "flush", "L_FLUSH", "espera linhas já aceitas", 720, 360, ST_STATE_ERR)
 
     e("t1", "idle", "wait", (450, 100), (450, 140), "run · i0 = j0 = k0 = 0", ST_TRANS)
     e("t2", "wait", "row", (450, 200), (450, 240), "bank[ld_ptr] = EMPTY ∧ serial_ok<br>→ LOADING", ST_TRANS)
-    e("t3", "row", "wrd", (450, 300), (450, 340), "rd_cmd_ready", ST_TRANS)
-    e("t4", "wrd", "nxt", (450, 400), (450, 440), "rd_done", ST_TRANS)
-    e("t5", "nxt", "row", (320, 470), (320, 270), "r &lt; T−1, ou<br>fim de A → B", ST_TRANS,
-      via=[(220, 470), (220, 270)], offset=(-30, 0))
-    e("t6", "nxt", "blk", (450, 500), (450, 560), "r = T−1 ∧ sel = B", ST_TRANS)
-    e("t7", "blk", "wait", (580, 595), (580, 170), "falta bloco", ST_TRANS, via=[(680, 595), (680, 170)],
-      offset=(40, 0))
-    e("t8", "blk", "end", (450, 630), (450, 690), "último bloco", ST_TRANS)
-    e("t9", "wait", "end", (320, 185), (320, 720), "stop", ERR, via=[(120, 185), (120, 720)])
-    e("t10", "end", "idle", (580, 720), (580, 70), "¬run", ST_TRANS, via=[(780, 720), (780, 70)])
+    e("t3", "row", "row", (320, 255), (320, 285), "rd_cmd_ready ∧ não é a<br>última linha (r += 1, A → B)",
+      ST_TRANS, via=[(230, 255), (230, 285)], offset=(-30, 0))
+    e("t4", "row", "wblk", (450, 300), (450, 360), "rd_cmd_ready ∧ última linha de B", ST_TRANS)
+    e("t5", "wblk", "blk", (450, 420), (450, 480), "rows_done = 2T", ST_TRANS)
+    e("t6", "blk", "wait", (580, 515), (580, 170), "¬last_blk", ST_TRANS, via=[(680, 515), (680, 170)],
+      offset=(-30, 120))
+    e("t7", "blk", "end", (450, 550), (450, 620), "last_blk", ST_TRANS)
+    e("t8", "wait", "end", (320, 185), (320, 640), "stop", ERR, via=[(120, 185), (120, 640)])
+    e("t9", "row", "flush", (580, 270), (760, 360), "stop", ERR, via=[(760, 270)], offset=(40, 0))
+    e("t10", "wblk", "flush", (580, 390), (720, 390), "stop", ERR)
+    e("t11", "flush", "end", (850, 420), (580, 650), "rd_idle", ERR, via=[(850, 650)])
+    e("t12", "end", "idle", (320, 665), (320, 55), "¬run", ST_TRANS, via=[(60, 665), (60, 55)])
     v("note", "<b>serial_ok</b><br>PINGPONG = 1: sempre 1<br>PINGPONG = 0: ¬(k0 = 0 ∧ tile_pendente)<br><br>"
               "<b>nbytes</b><br>A: i0+r ≥ M → 0, senão min(T, K−k0)<br>B: k0+r ≥ K → 0, senão min(T, N−j0)<br>"
-              "0 = linha de padding, sem AR", 820, 40, 270, 200, ST_BOX)
+              "0 = linha de padding, sem AR<br><br><b>pipeline</b>: 1 linha por ciclo enquanto<br>a fila do motor está livre",
+      820, 40, 270, 250, ST_BOX)
     return d
 
 
@@ -287,90 +292,95 @@ def dma_compute_fsm():
     _st(v, "wait", "C_WAIT_FULL", "espera banco cp_ptr cheio", 320, 140)
     _st(v, "start", "C_START", "tile_start · tile_bank = cp_ptr<br>banco → COMPUTING", 320, 240)
     _st(v, "wdone", "C_WAIT_DONE", "malha calculando (3T−1 ciclos)", 320, 340)
-    _st(v, "free", "C_FREE", "banco → EMPTY · cp_ptr ^= PINGPONG · cnt += 1", 320, 440)
+    _st(v, "free", "C_FREE", "banco → EMPTY · cp_ptr ^= PINGPONG", 320, 440)
     _st(v, "end", "C_END", "compute_end = 1", 320, 560, ST_STATE_END)
 
-    e("t1", "idle", "wait", (450, 100), (450, 140), "run · cnt = 0", ST_TRANS)
-    e("t2", "wait", "start", (450, 200), (450, 240), "bank[cp_ptr] = FULL ∧ ¬busy", ST_TRANS)
+    e("t1", "idle", "wait", (450, 100), (450, 140), "run", ST_TRANS)
+    e("t2", "wait", "start", (450, 200), (450, 240), "¬stop ∧ bank[cp_ptr] = FULL ∧ ¬acc_busy", ST_TRANS)
     e("t3", "start", "wdone", (450, 300), (450, 340), "1 ciclo", ST_TRANS)
     e("t4", "wdone", "free", (450, 400), (450, 440), "tile_done", ST_TRANS)
-    e("t5", "free", "wait", (580, 470), (580, 170), "cnt &lt; n_blocks", ST_TRANS, via=[(680, 470), (680, 170)],
-      offset=(45, 0))
-    e("t6", "free", "end", (450, 500), (450, 560), "cnt = n_blocks", ST_TRANS)
-    e("t7", "wait", "end", (320, 170), (320, 590), "stop ∧ ¬busy", ERR, via=[(180, 170), (180, 590)])
+    e("t5", "free", "wait", (580, 470), (580, 170), "¬last_blk", ST_TRANS, via=[(680, 470), (680, 170)],
+      offset=(35, 0))
+    e("t6", "free", "end", (450, 500), (450, 560), "last_blk do banco", ST_TRANS)
+    e("t7", "wait", "end", (320, 170), (320, 590), "stop (prioridade)", ERR, via=[(180, 170), (180, 590)])
     e("t8", "end", "idle", (580, 590), (580, 70), "¬run", ST_TRANS, via=[(780, 590), (780, 70)])
     return d
 
 
 def dma_store_fsm():
-    d = Diagram("dma_store_fsm", "dma_store", 1100, 780)
+    d = Diagram("dma_store_fsm", "dma_store", 1100, 720)
     v, e = d.vertex, d.edge
     _st(v, "idle", "S_IDLE", "—", 320, 40)
     _st(v, "wait", "S_WAIT_C", "espera c_valid", 320, 140)
     _st(v, "row", "S_ROW", "wr_cmd: addr = ptr_c, nwords = min(T, N−j0s)", 320, 240)
-    _st(v, "wwr", "S_WAIT_WR", "espera wr_done", 320, 340)
-    _st(v, "nxt", "S_NEXT_ROW", "r += 1 · ptr_c += STRIDE_C", 320, 440)
-    _st(v, "rel", "S_RELEASE", "c_release · avança j0s (e i0s)", 320, 560)
-    _st(v, "end", "S_END", "store_end = 1", 320, 690, ST_STATE_END)
+    _st(v, "wtile", "S_WAIT_TILE", "espera rows_done = issued", 320, 360)
+    _st(v, "rel", "S_RELEASE", "c_release (Moore) · avança j0s (e i0s)", 320, 480)
+    _st(v, "end", "S_END", "store_end = 1", 320, 610, ST_STATE_END)
 
     e("t1", "idle", "wait", (450, 100), (450, 140), "run · i0s = j0s = 0", ST_TRANS)
     e("t2", "wait", "row", (450, 200), (450, 240), "c_valid ∧ ¬stop · r = 0", ST_TRANS)
-    e("t3", "row", "wwr", (450, 300), (450, 340), "wr_cmd_ready", ST_TRANS)
-    e("t4", "wwr", "nxt", (450, 400), (450, 440), "wr_done", ST_TRANS)
-    e("t5", "nxt", "row", (320, 470), (320, 270), "r &lt; T−1", ST_TRANS, via=[(220, 470), (220, 270)],
-      offset=(-25, 0))
-    e("t6", "nxt", "rel", (450, 500), (450, 560), "r = T−1", ST_TRANS)
-    e("t7", "rel", "wait", (580, 575), (580, 180), "falta tile", ST_TRANS, via=[(680, 575), (680, 180)],
+    e("t3", "row", "row", (320, 255), (320, 285), "wr_cmd_ready ∧<br>r &lt; T−1", ST_TRANS,
+      via=[(230, 255), (230, 285)], offset=(-25, 0))
+    e("t4", "row", "wtile", (450, 300), (450, 360), "r = T−1 aceito · linha fora (i0s + r ≥ M) · stop", ST_TRANS)
+    e("t5", "wtile", "rel", (450, 420), (450, 480), "rows_done = issued", ST_TRANS)
+    e("t6", "rel", "wait", (580, 500), (580, 180), "falta tile", ST_TRANS, via=[(680, 500), (680, 180)],
       offset=(35, 0))
-    e("t8", "row", "rel", (580, 260), (580, 598), "linha fora<br>(i0s + r ≥ M)", ST_TRANS,
-      via=[(760, 260), (760, 598)], offset=(0, 60))
-    e("t9", "wait", "rel", (580, 150), (580, 612), "c_valid ∧ stop<br>(descarta)", ERR,
-      via=[(860, 150), (860, 612)], offset=(0, 100))
-    e("t10", "rel", "end", (450, 620), (450, 690), "último tile", ST_TRANS)
-    e("t11", "wait", "end", (320, 185), (320, 720), "stop ∧ ¬c_valid<br>∧ compute_end", ERR,
-      via=[(120, 185), (120, 720)])
-    e("t12", "end", "idle", (580, 720), (580, 70), "¬run", ST_TRANS, via=[(960, 720), (960, 70)])
+    e("t7", "wait", "rel", (580, 150), (580, 525), "c_valid ∧ stop<br>(descarta)", ERR,
+      via=[(860, 150), (860, 525)], offset=(0, 100))
+    e("t8", "rel", "end", (450, 540), (450, 610), "último tile", ST_TRANS)
+    e("t9", "wait", "end", (320, 185), (320, 630), "stop ∧ compute_end", ERR, via=[(120, 185), (120, 630)])
+    e("t10", "end", "idle", (320, 655), (320, 55), "¬run", ST_TRANS, via=[(60, 655), (60, 55)])
+    v("note", "c_release vale 1 só no ciclo de S_RELEASE;<br>o acelerador zera c_valid na borda seguinte,<br>"
+              "então S_WAIT_C nunca vê o c_valid antigo (H7)", 700, 600, 380, 70, ST_BOX)
     return d
 
 
 def axi_rd_wr_fsm():
-    d = Diagram("axi_rd_wr_fsm", "Motores AXI", 1100, 580)
+    d = Diagram("axi_rd_wr_fsm", "Motores AXI", 1100, 650)
     v, e = d.vertex, d.edge
     w = 220
     v("fr", "dma_rd_engine — canais AR / R", 20, 20, 500, 540, ST_FRAME)
     v("fw", "dma_wr_engine — canais AW / W / B", 560, 20, 520, 540, ST_FRAME)
 
-    _st(v, "ri", "R_IDLE", "rd_cmd_ready = 1", 150, 60, w=w)
+    _st(v, "ri", "R_IDLE", "sem comando · carrega a fila", 150, 60, w=w)
     _st(v, "ra", "R_AR", "ARVALID · ARLEN = seg_len−1", 150, 160, w=w)
     _st(v, "rd", "R_DATA", "RREADY = 1 · 1 palavra/beat → buffer", 150, 260, w=w)
     _st(v, "rz", "R_ZERO", "escreve 0 nas palavras restantes", 150, 380, w=w)
-    _st(v, "rdn", "R_DONE", "pulso rd_done", 150, 480, ST_STATE_END, w=w)
-    e("r1", "ri", "ra", (260, 120), (260, 160), "cmd · nbytes &gt; 0", ST_TRANS)
+    _st(v, "rdn", "fim de linha", "pulso rd_done · carrega a fila", 150, 480, ST_BOX, w=w)
+    e("r1", "ri", "ra", (260, 120), (260, 160), "fila: nbytes &gt; 0", ST_TRANS)
     e("r2", "ra", "rd", (260, 220), (260, 260), "ARREADY", ST_TRANS)
     e("r3", "rd", "ra", (150, 290), (150, 190), "RLAST ∧<br>resta seg.", ST_TRANS, via=[(80, 290), (80, 190)],
       offset=(-5, 0))
-    e("r4", "rd", "rz", (260, 320), (260, 380), "RLAST ∧ word &lt; WPR", ST_TRANS)
-    e("r5", "rd", "rdn", (370, 290), (370, 500), "RLAST ∧<br>word = WPR", ST_TRANS, via=[(440, 290), (440, 500)],
+    e("r4", "rd", "rz", (260, 320), (260, 380), "RLAST ∧ word &lt; WPR−1", ST_TRANS)
+    e("r5", "rd", "rdn", (370, 290), (370, 500), "RLAST ∧<br>word = WPR−1", ST_TRANS, via=[(440, 290), (440, 500)],
       offset=(-10, 40))
-    e("r6", "ri", "rz", (370, 80), (370, 400), "cmd ·<br>nbytes = 0", ST_TRANS, via=[(490, 80), (490, 400)],
+    e("r6", "ri", "rz", (370, 80), (370, 400), "fila:<br>nbytes = 0", ST_TRANS, via=[(490, 80), (490, 400)],
       offset=(0, -90))
-    e("r7", "rz", "rdn", (260, 440), (260, 480), "word = WPR−1", ST_TRANS)
-    e("r8", "rdn", "ri", (150, 510), (150, 80), "", ST_TRANS, via=[(40, 510), (40, 80)])
+    e("r7", "rz", "rdn", (230, 440), (230, 480), "word = WPR−1", ST_TRANS)
+    e("r8", "rdn", "ri", (150, 520), (150, 80), "fila vazia", ST_TRANS, via=[(40, 520), (40, 80)], offset=(0, 120))
+    e("r9", "rdn", "ra", (150, 495), (150, 205), "dados", ST_TRANS, via=[(60, 495), (60, 205)], offset=(0, 40))
+    e("r10", "rdn", "rz", (300, 480), (300, 440), "padding", ST_TRANS, offset=(30, 0))
 
-    _st(v, "wi", "W_IDLE", "wr_cmd_ready = 1 · enche fila de C", 690, 60, w=w)
-    _st(v, "wa", "W_ADDR", "AWVALID · WVALID = fila ≠ ∅", 690, 160, w=w)
-    _st(v, "wd", "W_DATA", "WVALID = fila ≠ ∅ · WLAST no fim", 690, 260, w=w)
+    _st(v, "wi", "W_IDLE", "sem comando · carrega a fila · lê C", 690, 60, w=w)
+    _st(v, "wa", "W_ADDR", "AWVALID · WVALID = fila de C ≠ ∅", 690, 160, w=w)
+    _st(v, "wd", "W_DATA", "WVALID = fila de C ≠ ∅ · WLAST no fim", 690, 260, w=w)
     _st(v, "wb", "W_RESP", "BREADY = 1", 690, 380, w=w)
-    _st(v, "wdn", "W_DONE", "pulso wr_done", 690, 480, ST_STATE_END, w=w)
-    e("w1", "wi", "wa", (800, 120), (800, 160), "cmd aceito", ST_TRANS)
-    e("w2", "wa", "wd", (800, 220), (800, 260), "AWREADY (W ainda em curso)", ST_TRANS)
-    e("w3", "wa", "wb", (910, 190), (910, 400), "aw_done ∧<br>w_done", ST_TRANS, via=[(1000, 190), (1000, 400)],
+    _st(v, "wdn", "fim de linha", "pulso wr_done · carrega a fila", 690, 480, ST_BOX, w=w)
+    e("w1", "wi", "wa", (800, 120), (800, 160), "fila com comando", ST_TRANS)
+    e("w2", "wa", "wd", (800, 220), (800, 260), "aw_ok ∧ ¬w_ok", ST_TRANS)
+    e("w3", "wa", "wb", (910, 190), (910, 400), "aw_ok ∧<br>w_ok", ST_TRANS, via=[(1000, 190), (1000, 400)],
       offset=(0, 0))
-    e("w4", "wd", "wb", (800, 320), (800, 380), "último beat aceito", ST_TRANS)
+    e("w4", "wd", "wb", (800, 320), (800, 380), "w_ok", ST_TRANS)
     e("w5", "wb", "wa", (690, 410), (690, 190), "BVALID ∧<br>resta seg.", ST_TRANS, via=[(620, 410), (620, 190)],
       offset=(-5, 0))
     e("w6", "wb", "wdn", (800, 440), (800, 480), "BVALID ∧ fim da linha", ST_TRANS)
-    e("w7", "wdn", "wi", (690, 510), (690, 80), "", ST_TRANS, via=[(590, 510), (590, 80)])
+    e("w7", "wdn", "wi", (690, 520), (690, 80), "fila vazia", ST_TRANS, via=[(580, 520), (580, 80)], offset=(0, 120))
+    e("w8", "wdn", "wa", (690, 495), (690, 205), "próximo", ST_TRANS, via=[(600, 495), (600, 205)], offset=(0, 40))
+    v("note", "Fila de 1 comando por motor: cmd_ready = fila vazia · idle = *_IDLE ∧ fila vazia. "
+              "\"fim de linha\" não é estado: no mesmo ciclo do último beat (ou do B) sai o pulso de done "
+              "e o comando da fila vira corrente.<br>aw_ok = aw_done ∨ (AWVALID ∧ AWREADY) · "
+              "w_ok = w_done ∨ (WVALID ∧ WREADY ∧ WLAST)",
+      20, 575, 1060, 60, ST_TEXT + "fontSize=11;")
     return d
 
 
