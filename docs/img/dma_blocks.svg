@@ -1,0 +1,234 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif" width="1100" height="790" viewBox="0 0 1100 790">
+  <defs>
+    <marker id="m_fill_0B6F8A" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0B6F8A" />
+    </marker>
+    <marker id="m_fill_D0021B" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#D0021B" />
+    </marker>
+    <marker id="m_fill_333333" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#333333" />
+    </marker>
+    <marker id="m_fill_0E8FB4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0E8FB4" />
+    </marker>
+  </defs>
+  <rect x="0" y="0" fill="#FFFFFF" width="1100" height="790" />
+  <rect x="20" y="10" width="800" height="690" fill="#E6ECEC" stroke="none" stroke-width="1" />
+  <text x="28.0" y="24.7" text-anchor="start" fill="#4A5555" font-style="italic">
+    <tspan font-size="11" font-weight="normal">dma.v — parâmetros ARRAY_SIZE, PINGPONG, MAX_BURST</tspan>
+  </text>
+  <rect x="40" y="30" width="180" height="70" fill="#808285" stroke="#5A5C5E" stroke-width="1" rx="10.0" ry="10.0" />
+  <text x="130.0" y="54.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">dma_regs</tspan>
+  </text>
+  <text x="130.0" y="69.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">slave AXI4 (S1)</tspan>
+  </text>
+  <text x="130.0" y="84.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">registradores · irq</tspan>
+  </text>
+  <rect x="340" y="30" width="440" height="70" fill="#7ED321" stroke="#5FA316" stroke-width="1" rx="10.0" ry="10.0" />
+  <text x="560.0" y="54.2" text-anchor="middle" fill="#1B2A05">
+    <tspan font-size="12" font-weight="bold">dma_ctrl</tspan>
+  </text>
+  <text x="560.0" y="69.2" text-anchor="middle" fill="#1B2A05">
+    <tspan font-size="11" font-weight="normal">IDLE → CHECK → RUN → DRAIN → ERROR/DONE</tspan>
+  </text>
+  <text x="560.0" y="84.2" text-anchor="middle" fill="#1B2A05">
+    <tspan font-size="11" font-weight="normal">strides · n_tiles · n_blocks · erro · soft reset</tspan>
+  </text>
+  <rect x="40" y="180" width="220" height="80" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="10.0" ry="10.0" />
+  <text x="150.0" y="209.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">dma_load</tspan>
+  </text>
+  <text x="150.0" y="224.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">produtor · itera i0 → j0 → k0</tspan>
+  </text>
+  <text x="150.0" y="239.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">T linhas de A + T de B</tspan>
+  </text>
+  <rect x="300" y="180" width="220" height="80" fill="#1CC0DD" stroke="#119BB3" stroke-width="1" rx="10.0" ry="10.0" />
+  <text x="410.0" y="201.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">dma_bank_ctrl</tspan>
+  </text>
+  <text x="410.0" y="216.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">estado dos bancos</tspan>
+  </text>
+  <text x="410.0" y="231.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">EMPTY/LOADING/FULL/COMPUTING</tspan>
+  </text>
+  <text x="410.0" y="246.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">ld_ptr · cp_ptr</tspan>
+  </text>
+  <rect x="560" y="180" width="220" height="80" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="10.0" ry="10.0" />
+  <text x="670.0" y="209.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">dma_compute</tspan>
+  </text>
+  <text x="670.0" y="224.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">tile_start por banco cheio</tspan>
+  </text>
+  <text x="670.0" y="239.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">first_k · last_k</tspan>
+  </text>
+  <rect x="40" y="330" width="220" height="80" fill="#808285" stroke="#5A5C5E" stroke-width="1" rx="10.0" ry="10.0" />
+  <text x="150.0" y="359.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">dma_rd_engine</tspan>
+  </text>
+  <text x="150.0" y="374.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">AR/R · 1 burst por linha</tspan>
+  </text>
+  <text x="150.0" y="389.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">4 KB · alinhamento · padding</tspan>
+  </text>
+  <rect x="560" y="440" width="220" height="70" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="10.0" ry="10.0" />
+  <text x="670.0" y="464.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">dma_store</tspan>
+  </text>
+  <text x="670.0" y="479.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">consumidor · linhas válidas de C</tspan>
+  </text>
+  <text x="670.0" y="494.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">c_release por tile</tspan>
+  </text>
+  <rect x="560" y="560" width="220" height="80" fill="#808285" stroke="#5A5C5E" stroke-width="1" rx="10.0" ry="10.0" />
+  <text x="670.0" y="589.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">dma_wr_engine</tspan>
+  </text>
+  <text x="670.0" y="604.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">AW/W/B · bursts de C · WLAST</tspan>
+  </text>
+  <text x="670.0" y="619.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">fila de 2 entradas (c_rdata)</tspan>
+  </text>
+  <rect x="860" y="180" width="220" height="460" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="10.0" ry="10.0" />
+  <text x="970.0" y="391.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">Acelerador</tspan>
+  </text>
+  <text x="970.0" y="406.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">buf A/B × 2 bancos</tspan>
+  </text>
+  <text x="970.0" y="421.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">malha T×T</tspan>
+  </text>
+  <text x="970.0" y="436.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">banco C</tspan>
+  </text>
+  <rect x="860" y="30" width="220" height="50" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="7.5" ry="7.5" />
+  <text x="970.0" y="59.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">CPU RV32I</tspan>
+  </text>
+  <rect x="40" y="720" width="740" height="50" fill="#7ED321" stroke="#5FA316" stroke-width="1" rx="7.5" ry="7.5" />
+  <text x="410.0" y="749.2" text-anchor="middle" fill="#1B2A05">
+    <tspan font-size="12" font-weight="bold">axi_xbar (AXI4)</tspan>
+  </text>
+  <polyline points="220,65 340,65" fill="none" stroke="#0B6F8A" stroke-width="1.5" marker-end="url(#m_fill_0B6F8A)" />
+  <text x="164.0" y="116.0" text-anchor="start" fill="#0B6F8A">
+    <tspan font-size="11" font-weight="normal">start · soft_reset →</tspan>
+  </text>
+  <text x="164.0" y="129.7" text-anchor="start" fill="#0B6F8A">
+    <tspan font-size="11" font-weight="normal">← done · error · err_code</tspan>
+  </text>
+  <polyline points="200,30 200,15 970,15 970,30" fill="none" stroke="#D0021B" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#m_fill_D0021B)" />
+  <polyline points="360,100 360,150 100,150 100,180" fill="none" stroke="#0B6F8A" stroke-width="1.5" marker-end="url(#m_fill_0B6F8A)" />
+  <polyline points="410,100 410,180" fill="none" stroke="#0B6F8A" stroke-width="1.5" marker-end="url(#m_fill_0B6F8A)" />
+  <polyline points="670,100 670,180" fill="none" stroke="#0B6F8A" stroke-width="1.5" marker-end="url(#m_fill_0B6F8A)" />
+  <polyline points="540,100 540,420 620,420 620,440" fill="none" stroke="#0B6F8A" stroke-width="1.5" marker-end="url(#m_fill_0B6F8A)" />
+  <polyline points="260,220 300,220" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" marker-start="url(#m_fill_333333)" />
+  <polyline points="520,220 560,220" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" marker-start="url(#m_fill_333333)" />
+  <polyline points="150,260 150,330" fill="none" stroke="#0B6F8A" stroke-width="1.5" marker-end="url(#m_fill_0B6F8A)" />
+  <polyline points="670,510 670,560" fill="none" stroke="#0B6F8A" stroke-width="1.5" marker-end="url(#m_fill_0B6F8A)" />
+  <polyline points="150,410 150,720" fill="none" stroke="#333333" stroke-width="2" marker-end="url(#m_fill_333333)" marker-start="url(#m_fill_333333)" />
+  <polyline points="670,640 670,720" fill="none" stroke="#333333" stroke-width="2" marker-end="url(#m_fill_333333)" marker-start="url(#m_fill_333333)" />
+  <polyline points="40,745 10,745 10,65 40,65" fill="none" stroke="#333333" stroke-width="2" marker-end="url(#m_fill_333333)" marker-start="url(#m_fill_333333)" />
+  <polyline points="260,360 860,360" fill="none" stroke="#0E8FB4" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#m_fill_0E8FB4)" />
+  <polyline points="780,220 860,220" fill="none" stroke="#0E8FB4" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#m_fill_0E8FB4)" marker-start="url(#m_fill_0E8FB4)" />
+  <polyline points="860,475 780,475" fill="none" stroke="#0E8FB4" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#m_fill_0E8FB4)" marker-start="url(#m_fill_0E8FB4)" />
+  <polyline points="780,600 860,600" fill="none" stroke="#0E8FB4" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#m_fill_0E8FB4)" marker-start="url(#m_fill_0E8FB4)" />
+  <rect x="572.6" y="7.8" width="24.8" height="14.5" fill="#FFFFFF" />
+  <text x="585.0" y="18.5" text-anchor="middle" fill="#D0021B">
+    <tspan font-size="10" font-weight="normal">irq</tspan>
+  </text>
+  <rect x="148.0" y="142.8" width="64.0" height="14.5" fill="#FFFFFF" />
+  <text x="180.0" y="153.5" text-anchor="middle" fill="#0B6F8A">
+    <tspan font-size="10" font-weight="normal">run · stop</tspan>
+  </text>
+  <rect x="380.8" y="126.5" width="58.4" height="27.0" fill="#FFFFFF" />
+  <text x="410.0" y="137.2" text-anchor="middle" fill="#0B6F8A">
+    <tspan font-size="10" font-weight="normal">reset dos</tspan>
+  </text>
+  <text x="410.0" y="149.8" text-anchor="middle" fill="#0B6F8A">
+    <tspan font-size="10" font-weight="normal">bancos</tspan>
+  </text>
+  <rect x="638.0" y="126.5" width="64.0" height="27.0" fill="#FFFFFF" />
+  <text x="670.0" y="137.2" text-anchor="middle" fill="#0B6F8A">
+    <tspan font-size="10" font-weight="normal">run · stop</tspan>
+  </text>
+  <text x="670.0" y="149.8" text-anchor="middle" fill="#0B6F8A">
+    <tspan font-size="10" font-weight="normal">n_blocks</tspan>
+  </text>
+  <rect x="508.0" y="272.8" width="64.0" height="14.5" fill="#FFFFFF" />
+  <text x="540.0" y="283.5" text-anchor="middle" fill="#0B6F8A">
+    <tspan font-size="10" font-weight="normal">run · stop</tspan>
+  </text>
+  <rect x="120.8" y="281.5" width="58.4" height="27.0" fill="#FFFFFF" />
+  <text x="150.0" y="292.2" text-anchor="middle" fill="#0B6F8A">
+    <tspan font-size="10" font-weight="normal">rd_cmd →</tspan>
+  </text>
+  <text x="150.0" y="304.8" text-anchor="middle" fill="#0B6F8A">
+    <tspan font-size="10" font-weight="normal">← rd_done</tspan>
+  </text>
+  <rect x="615.6" y="527.8" width="108.8" height="14.5" fill="#FFFFFF" />
+  <text x="670.0" y="538.5" text-anchor="middle" fill="#0B6F8A">
+    <tspan font-size="10" font-weight="normal">wr_cmd → ← wr_done</tspan>
+  </text>
+  <rect x="98.4" y="551.5" width="103.2" height="27.0" fill="#FFFFFF" />
+  <text x="150.0" y="562.2" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">M1 · AR / R</tspan>
+  </text>
+  <text x="150.0" y="574.8" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="bold">/</tspan>
+    <tspan font-size="10" font-weight="normal"> 32 · AXI4 burst</tspan>
+  </text>
+  <rect x="618.4" y="666.5" width="103.2" height="27.0" fill="#FFFFFF" />
+  <text x="670.0" y="677.2" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">M1 · AW / W / B</tspan>
+  </text>
+  <text x="670.0" y="689.8" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="bold">/</tspan>
+    <tspan font-size="10" font-weight="normal"> 32 · AXI4 burst</tspan>
+  </text>
+  <rect x="10.8" y="597.8" width="58.4" height="14.5" fill="#FFFFFF" />
+  <text x="40.0" y="608.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">S1 · AXI4</tspan>
+  </text>
+  <rect x="416.0" y="352.8" width="288.0" height="14.5" fill="#FFFFFF" />
+  <text x="560.0" y="363.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">buf_a_we / buf_b_we · bank · row · word · data[32]</tspan>
+  </text>
+  <rect x="754.4" y="165.2" width="131.2" height="39.5" fill="#FFFFFF" />
+  <text x="820.0" y="176.0" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">tile_start, tile_bank,</tspan>
+  </text>
+  <text x="820.0" y="188.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">first_k, last_k →</tspan>
+  </text>
+  <text x="820.0" y="201.0" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">← busy, tile_done</tspan>
+  </text>
+  <rect x="785.2" y="461.5" width="69.6" height="27.0" fill="#FFFFFF" />
+  <text x="820.0" y="472.2" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">c_valid →</tspan>
+  </text>
+  <text x="820.0" y="484.8" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">← c_release</tspan>
+  </text>
+  <rect x="771.2" y="586.5" width="97.6" height="27.0" fill="#FFFFFF" />
+  <text x="820.0" y="597.2" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">c_rd, row, col →</tspan>
+  </text>
+  <text x="820.0" y="609.8" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">← c_rdata</tspan>
+  </text>
+</svg>
