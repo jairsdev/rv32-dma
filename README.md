@@ -35,15 +35,19 @@ O sistema calcula **C = A × B**. A CPU apenas configura os endereços e dimens�
 │   ├── spec/      # Enunciado do projeto e especificações AXI / RISC-V
 │   └── img/       # Diagramas (.drawio + .svg) e figuras de decisões
 ├── rtl/
+│   ├── common/    # Constantes AXI compartilhadas (axi_defs.vh)
 │   ├── cpu/       # RISC-V RV32I
 │   ├── dma/       # Controlador DMA
 │   ├── accel/     # MAC e malha sistólica
-│   └── top/       # Top-level e memória compartilhada
+│   └── top/       # Top-level, xbar, adapter e memória compartilhada
 ├── model/         # Golden model (C/C++/Python) com tiling
 ├── sw/            # Firmware (C/Assembly RISC-V)
 ├── tb/
+│   ├── common/      # Checker AXI, BFM e gerador de backpressure
 │   ├── unit_accel/  # Testbench unitário do acelerador
-│   ├── unit_dma/    # Testbench DMA + memória + acelerador
+│   ├── unit_mem/    # Testbench do controlador de memória AXI
+│   ├── unit_dma/    # Testbenches do DMA (registradores, motores, integração)
+│   ├── unit_xbar/   # Testbench do crossbar AXI
 │   └── uvm/         # Ambiente UVM integrado
 ├── scripts/       # Geração de diagramas, Makefiles e scripts de simulação
 └── synth/         # Scripts, logs e reports de síntese
@@ -113,7 +117,7 @@ A topologia segue a ideia do diagrama de referência ARM CoreLink NIC-400 (maste
 | `axi_mem_ctrl` | Slave AXI4 com bursts INCR que acessa a SRAM síncrona, respeitando `WSTRB`. |
 | Memória de dados compartilhada | SRAM de 64 KiB em `0x1000_0000` com dados do firmware, matrizes A, B, C e pilha; acessada pela CPU e pelo DMA. |
 | DMA | Master AXI4 (M1) + bloco de registradores (slave S1). FSMs concorrentes de carga, cálculo e gravação: lê A/B em bursts, preenche um banco enquanto a malha usa o outro, grava C do banco de saída; sinaliza `DONE` e `irq` (MAS §5–§9). |
-| Acelerador | buf A e buf B (T×T int8), registradores de skew e malha T×T de PEs output-stationary; os acumuladores int32 servem de banco C. Controlado só pelo DMA, via sideband. |
+| Acelerador | buf A e buf B (T×T int8; 2 bancos com `PINGPONG = 1`), registradores de skew e malha T×T de PEs output-stationary. C sai de um banco C separado (T×T int32) com `PINGPONG = 1`, ou direto dos acumuladores com `PINGPONG = 0`. Controlado só pelo DMA, via sideband (MAS §11). |
 
 ## 2. Decisões de microarquitetura
 
@@ -160,7 +164,10 @@ No output-stationary cada PE acumula um elemento de C durante todos os blocos k0
 | Registradores DMA/Acelerador | `0x4000_0000` | `0x4000_0FFF` | 4 KiB | CPU (Porta D), via S1 | Controle mapeado em memória (§3.2) |
 | Demais endereços | — | — | — | — | Resposta `DECERR` (`RESP = 0b11`) |
 
-O `axi_xbar` decodifica `addr[31:28]`; dentro de cada região, o slave usa só os bits baixos (`addr[15:2]` na DMEM, `addr[11:2]` nos registradores).
+O `axi_xbar` decodifica só `addr[31:28]`; dentro de cada região, o slave usa só os bits baixos (`addr[15:2]` na DMEM, `addr[11:2]` nos registradores). Consequências (MAS §12.1):
+- toda a faixa `0x1xxx_xxxx` chega ao controlador da DMEM, que responde `SLVERR` fora dos 64 KiB;
+- toda a faixa `0x4xxx_xxxx` chega aos registradores, que se repetem a cada 4 KiB;
+- o `DECERR` vale para os demais valores de `addr[31:28]`.
 
 Mapa sugerido da DMEM:
 
@@ -181,22 +188,22 @@ Base `0x4000_0000`. Todos os registradores têm 32 bits e são acessados com `lw
 
 | Offset | Nome | Acesso | Reset | Campos |
 |--------|------|--------|-------|--------|
-| `0x00` | `CTRL` | R/W | `0` | `[0] START` (escrever 1 dispara; lê 0) · `[1] IRQ_EN` · `[2] SOFT_RESET` (escrever 1 leva o DMA a IDLE e limpa `STATUS`; lê 0) |
+| `0x00` | `CTRL` | R/W | `0` | `[0] START` (escrever 1 dispara; lê 0) · `[1] IRQ_EN` · `[2] SOFT_RESET` (escrever 1 aborta: o DMA termina as transações AXI em andamento, volta a IDLE e limpa `STATUS`, sem `DONE`; lê 0. MAS §13) |
 | `0x04` | `STATUS` | R / W1C | `0` | `[0] BUSY` (RO) · `[1] DONE` (W1C) · `[2] ERROR` (W1C) · `[7:4] ERR_CODE` (RO: 1 = dimensão zero, 2 = endereço desalinhado, 3 = erro em leitura, 4 = erro em escrita) |
-| `0x08` | `ADDR_A` | R/W | `0` | Endereço-base de A (`[1:0]` = 0) |
-| `0x0C` | `ADDR_B` | R/W | `0` | Endereço-base de B (`[1:0]` = 0) |
-| `0x10` | `ADDR_C` | R/W | `0` | Endereço-base de C (`[1:0]` = 0) |
+| `0x08` | `ADDR_A` | R/W | `0` | Endereço-base de A. Guarda os 32 bits escritos; `[1:0] ≠ 0` gera `ERR_CODE = 2` no `START` |
+| `0x0C` | `ADDR_B` | R/W | `0` | Endereço-base de B (mesma regra) |
+| `0x10` | `ADDR_C` | R/W | `0` | Endereço-base de C (mesma regra) |
 | `0x14` | `DIM_M` | R/W | `0` | `[15:0]` M: linhas de A e de C (1 … 65535) |
 | `0x18` | `DIM_N` | R/W | `0` | `[15:0]` N: colunas de B e de C |
 | `0x1C` | `DIM_K` | R/W | `0` | `[15:0]` K: colunas de A e linhas de B |
 | `0x20` | `CYCLES` | RO | `0` | Ciclos de clock de `START` até `DONE` (zera no `START`); usado na comparação entre configurações |
 | `0x24` | `INFO` | RO | — | `[7:0] ARRAY_SIZE` · `[15:8]` largura do operando (8) · `[23:16]` largura do acumulador (32) · `[27:24]` versão (2) · `[28] PINGPONG` |
-| `0x28` | `CYC_COMPUTE` | RO | `0` | Ciclos com a malha ocupada desde o `START` (uso da malha = `CYC_COMPUTE / CYCLES`) |
+| `0x28` | `CYC_COMPUTE` | RO | `0` | Ciclos com a malha calculando desde o `START`, sem contar a espera pelo banco C (uso da malha = `CYC_COMPUTE / CYCLES`) |
 
 Regras:
 
 - `irq = STATUS.DONE ∧ CTRL.IRQ_EN` (nível). Cai quando o firmware escreve 1 em `STATUS.DONE`.
-- Com `BUSY = 1`, escritas em `ADDR_*`, `DIM_*` e um novo `START` são ignoradas.
+- Com `BUSY = 1`, escritas em `ADDR_*`, `DIM_*` e um novo `START` são ignoradas; `SOFT_RESET` e `IRQ_EN` continuam aceitos.
 - Offsets não mapeados leem 0 e ignoram escrita (resposta `OKAY`).
 - Erro de configuração (dimensão zero ou endereço desalinhado) ou resposta de erro no barramento → `ERROR = 1`, `ERR_CODE` e `DONE = 1`.
 
