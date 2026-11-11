@@ -1140,16 +1140,19 @@ No `PINGPONG = 1`, a parcela `kb·Ld` é a carga do primeiro tile (enchimento do
 - **Constantes AXI** num include comum, `rtl/common/axi_defs.vh`: `AXI_BURST_INCR`, `AXI_SIZE_4B`, `AXI_RESP_OKAY/SLVERR/DECERR`.
 - **FSM:**
   - Estados como `localparam`.
-  - Um `always @(posedge clk or negedge rst_n)` para o estado e os registradores.
-  - Um `always @(*)` para o próximo estado, com default no topo (sem latches).
-- **Saídas para o barramento:** `AxVALID`, `WVALID`, `RVALID`, `BVALID` e os payloads saem de registradores. Os `READY` podem ser combinacionais, mas nunca dependem do `VALID` do mesmo canal no sentido oposto.
+  - Um `always @(posedge clk or negedge rst_n)` para o estado e os registradores, inclusive os de saída AXI.
+  - Um `always @(*)` para o próximo estado e as saídas internas, com default no topo (sem latches).
+- **Saídas para o barramento:**
+  - `AxVALID`, `WVALID`, `RVALID`, `BVALID` e os payloads saem de registradores, atualizados no `always` sequencial a partir do próximo estado.
+  - Os `READY` podem ser combinacionais, mas nunca dependem do `VALID` do mesmo canal no sentido oposto.
+  - Saídas internas entre módulos do DMA e para o acelerador (`rd_cmd_valid`, `c_release`, `tile_start` etc.) podem ser decodificadas do estado (Moore). `c_release` **deve** ser assim (9.4).
 - **Reset:** assíncrono ativo em 0 (`rst_n`), como no RTL atual. Todos os `VALID` zeram no reset.
 - **Nomes:**
   - Portas AXI com prefixo `s_` (slave) ou `m_` (master) e o nome da especificação em minúsculas (`m_arvalid`).
   - Sinais internos em `snake_case`.
-  - Estados em maiúsculas com prefixo da FSM (`L_ROW`, `S_WAIT_C`).
+  - Estados em maiúsculas com prefixo próprio de cada FSM, sem repetir prefixo entre módulos (`L_` load, `C_` compute, `S_` store, `R_`/`W_` motores, `A_` acelerador, `M_` memória).
 - **Parâmetros:** `ARRAY_SIZE`, `PINGPONG` e `MAX_BURST` passam do top para baixo, sem `define` global.
-- **Asserções:** entre `` `ifdef DMA_ASSERT `` … `` `endif ``, em Verilog simples (`if (cond) $error(...)`), para rodar no iverilog.
+- **Asserções:** entre `` `ifdef DMA_ASSERT `` … `` `endif ``, no formato `if (cond) $error(...)`. `$error` é da SystemVerilog: o RTL continua Verilog-2005, mas a simulação com asserções exige `iverilog -g2012`. Quem compilar como Verilog-2005 puro deve trocar `$error` por `$display` + `$stop`.
 
 ### 15.2 Síntese
 
@@ -1179,7 +1182,7 @@ No `PINGPONG = 1`, a parcela `kb·Ld` é a carga do primeiro tile (enchimento do
 | ID | Arquivo | DUT | O que prova | Entrega |
 |---|---|---|---|---|
 | TB-MEM | `tb/unit_mem/tb_axi_mem_ctrl.v` | `axi_mem_ctrl` | Bursts de 1–16 beats, `WSTRB` parcial, leitura 1 beat/ciclo, SLVERR fora do perfil e fora do range, alternância AR/AW | 3 |
-| TB-ACC | `tb/unit_accel/tb_accel.v` | `accel` | Regressão da Entrega 2 com porta de 32 bits; bancos; `last_k` e banco C; espera em `S_WAIT_C`; `PINGPONG` = 0/1 | 3 |
+| TB-ACC | `tb/unit_accel/tb_accel.v` | `accel` | Regressão da Entrega 2 com porta de 32 bits; bancos; `last_k` e banco C; espera em `A_WAIT_C`; tempo do `c_release`; `acc_active`; `PINGPONG` = 0/1 | 3 |
 | TB-REGS | `tb/unit_dma/tb_dma_regs.v` | `dma_regs` | Leitura/escrita de cada registrador, W1C, `irq`, escrita ignorada com `BUSY`, burst → SLVERR | 3 |
 | TB-RD | `tb/unit_dma/tb_dma_rd_engine.v` | `dma_rd_engine` + `axi_mem_ctrl` | Linhas com `nbytes` = 0…T, T = 2/4/8, `off` = 2 em T = 2, divisão em 4 KB, `MAX_BURST` pequeno, RRESP de erro | 3 |
 | TB-WR | `tb/unit_dma/tb_dma_wr_engine.v` | `dma_wr_engine` + `axi_mem_ctrl` + modelo de C | `nwords` = 1…T, divisão em 4 KB, fila de C sob backpressure, BRESP de erro | 3 |
@@ -1193,7 +1196,10 @@ No `PINGPONG = 1`, a parcela `kb·Ld` é a carga do primeiro tile (enchimento do
 |---|---|---|---|---|
 | 1 a 6 + 16×16×16 | 2, 4, 8 | 0, 1 | sem / aleatória (3 sementes) | 7 × 3 × 2 × 4 = 168 execuções |
 
-Os vetores vêm de `python3 model/golden.py --m M --k K --n N --t T --seed S`.
+**Geração dos vetores:**
+- Casos 1 a 6: `python3 model/golden.py --case N --seed S`. Os casos 4 (valores extremos) e 5 (valores fixos) só existem por `--case`.
+- 16×16×16: `python3 model/golden.py --m 16 --k 16 --n 16 --seed S`.
+- **Sobre T:** o T usado pelo golden model não muda `dmem.hex` nem `c_expected.hex`, porque o C do tiling é igual ao da multiplicação direta. Os mesmos vetores servem para T = 2, 4 e 8; só o parâmetro `ARRAY_SIZE` do RTL muda.
 
 ### 16.4 Testes de erro
 
@@ -1202,11 +1208,15 @@ Os vetores vêm de `python3 model/golden.py --m M --k K --n N --t T --seed S`.
 3. `ADDR_A` fora da DMEM (`0x1002_0000`) → SLVERR → `ERR_CODE = 3`, dreno completo, `DONE`, `irq`.
 4. `ADDR_C = 0x2000_0000` (DECERR no xbar, Entrega 4) → `ERR_CODE = 4`.
 5. `SOFT_RESET` no meio da operação → volta a `IDLE` sem transação AXI pendurada (o checker acusa se houver).
+6. `stop` em cada estado: repetir o teste 5 com o `SOFT_RESET` disparado em ciclos sucessivos (varredura de 1 a `CYCLES` do caso 3), cobrindo `stop` em cada estado de load, compute e store. Em todas as execuções: o DRAIN termina, nenhum AR/AW sai depois de `BUSY` cair (H6) e `irq` não sobe.
+7. Erro seguido de nova operação: depois do teste 3, reconfigurar com endereços válidos e dar `START`. C tem de sair idêntico ao golden. Isso prova o reset dos bancos no `CHECK` (7.8).
+8. `SOFT_RESET` em `IDLE` e em `CHECK`: sem efeito no primeiro caso; volta a `IDLE` sem nenhuma transação no segundo.
+9. Gravação única: um monitor no canal AW conta os bursts de C por endereço. Cada linha válida de C tem de ser gravada exatamente uma vez (H7), inclusive com backpressure aleatória.
 
 ### 16.5 Critérios de aceite
 
 - 100 % da matriz 16.3 com C idêntico ao golden model.
-- Zero violação do `axi_checker` e das asserções H1–H5 (7.8).
+- Zero violação do `axi_checker` e das asserções H1–H7 (7.8).
 - `PINGPONG = 1` com `CYCLES` menor ou igual a `PINGPONG = 0` em todos os casos, e estritamente menor quando há mais de um bloco.
 - Um waveform com uma operação completa guardado para a apresentação (enunciado §7).
 
@@ -1224,7 +1234,7 @@ Cada passo só começa quando os passos de que depende passaram no critério de 
 | 4 | Registradores | `rtl/dma/dma_regs.v`, `tb/unit_dma/tb_dma_regs.v` | 1 | TB-REGS passa | 3 | Augusto |
 | 5 | Motor de leitura | `rtl/dma/dma_rd_engine.v`, TB-RD | 1, 2 | TB-RD passa, incluindo 4 KB e `MAX_BURST` = 1 e 2 | 3 | Augusto |
 | 6 | Motor de escrita | `rtl/dma/dma_wr_engine.v`, TB-WR | 1, 2 | TB-WR passa sob backpressure | 3 | Augusto |
-| 7 | FSMs e top do DMA | `rtl/dma/dma_ctrl.v`, `dma_load.v`, `dma_compute.v`, `dma_store.v`, `dma.v` | 3–6 | Compila sem warnings no iverilog; asserções H1–H5 ativas | 3 | Augusto |
+| 7 | FSMs e top do DMA | `rtl/dma/dma_ctrl.v`, `dma_load.v`, `dma_compute.v`, `dma_store.v`, `dma.v` | 3–6 | Compila sem warnings no iverilog; asserções H1–H7 ativas | 3 | Augusto |
 | 8 | Integração sem CPU | `tb/unit_dma/tb_dma.v`, Makefile | 7 | Matriz 16.3 passa; waveform da operação completa | **3 (22/11)** | Gabriel, Augusto |
 | 9 | Crossbar | `rtl/top/axi_xbar.v`, `tb/unit_xbar/` | 1 | TB-XBAR passa | 4 | Cedraz |
 | 10 | Adapter da CPU + top | `rtl/top/cpu_axi_adapter.v`, `rtl/top/top.v` | 8, 9, CPU multiciclo | Firmware do README §7 roda e C confere com o golden | **4 (13/12)** | Tássio, Cedraz |
@@ -1237,11 +1247,17 @@ Cada passo só começa quando os passos de que depende passaram no critério de 
   2. Troque a porta para 32 bits.
   3. Adicione `last_k`, `c_valid`, `c_release` e o banco C.
   4. Rode o TB antigo, adaptado, com `PINGPONG = 0` **antes** de testar o modo 1. Assim qualquer diferença de resultado aponta para os bancos, não para a nova porta.
-- **Passo 5 (motor de leitura):** comece sem divisão em 4 KB (`seg_len = nwords_rd`) e acrescente a divisão depois, testando com `MAX_BURST = 1`.
+- **Passo 3 (acelerador), item extra:** acrescente a saída `acc_active` e renomeie os estados para `A_IDLE`/`A_RUN`/`A_WAIT_C`.
+- **Passo 5 (motor de leitura):**
+  1. Comece sem divisão em 4 KB (`seg_len = nwords_rd`) e com a fila de comando de 1 entrada.
+  2. No TB, entregue linhas de propósito em ciclos seguidos e confira a ordem dos `rd_done`.
+  3. Acrescente a divisão depois, testando com `MAX_BURST = 1`.
+- **Passo 6 (motor de escrita):** teste o caso em que todos os beats de W são aceitos antes do AW (o `axi_rand_stall` segura `AWREADY`). É o caminho `W_ADDR → W_RESP` da 9.5.
 - **Passo 7 (FSMs):**
   1. Integre primeiro com `PINGPONG = 0`, em que load, compute e store se alternam e a depuração é linear.
   2. Só depois passe para `PINGPONG = 1`.
   3. Rode o caso 6×5×7 com T = 4 e confira os endereços da tabela 8.3 no waveform.
+  4. Rode os testes de dreno da 16.4 (itens 5 a 9) antes de passar à integração.
 - **Passo 8 (integração):** os primeiros testes vão sem backpressure. A backpressure aleatória entra quando todos os casos passarem.
 
 ---
@@ -1263,6 +1279,9 @@ Cada passo só começa quando os passos de que depende passaram no critério de 
 | D9 | Erro e `SOFT_RESET` drenam as transações em andamento | Abortar imediatamente | AXI não permite abandonar transação; abortar travaria o xbar |
 | D10 | DMEM single-port | Dual-port | Fiel ao README; o efeito de disputa aparece em `CYCLES` e entra no relatório |
 | D11 | Registrador novo `CYC_COMPUTE` | Só `CYCLES` | Mede o uso da malha para a análise de trade-off |
+| D12 | Motores com fila de 1 comando (5.4) | Comando bloqueante (FSM espera `done` de cada linha) | Esconde ≈ 4 ciclos de handshake por linha, o que mantém o custo por linha em ≈ L + beats. Custa um registrador de comando por motor e contadores `rows_done` nas FSMs |
+| D13 | Dreno para na linha (13.2) | Terminar o bloco/tile em andamento | Dreno curto e previsível. O banco incompleto é descartado pelo `bank_clr` do próximo `CHECK` |
+| D14 | Fim da operação por `last_blk` e (`last_i0`, `last_j0`) | Contadores `n_tiles`/`n_blocks` | Dispensa multiplicadores 16×16 e 32×16 no `CHECK` |
 
 ### 18.2 Riscos
 
@@ -1270,7 +1289,7 @@ Cada passo só começa quando os passos de que depende passaram no critério de 
 |---|---|---|
 | Prazo da Entrega 3 (22/11) com 7 módulos novos + acelerador alterado | Alto | Ordem da seção 17; `PINGPONG = 0` primeiro; xbar e adapter ficam para a Entrega 4 |
 | Deadlock por violação de handshake (VALID dependente de READY, AW esperando W) | Alto | `axi_checker` em todos os TBs desde o passo 1; regras da 4.3 |
-| Conflito de banco (DMA escrevendo banco em cálculo) | Médio | Asserções H1–H5; proteção no acelerador (11.2 item 2) |
+| Conflito de banco (DMA escrevendo banco em cálculo) | Médio | Asserções H1–H7; proteção no acelerador (11.2 item 2) |
 | Área do ping-pong em T = 8 (+3072 FFs) | Médio | É dado do relatório, não defeito; comparar com `PINGPONG = 0` |
 | Caminho combinacional do xbar limitar Fmax | Baixo | Medir na síntese; se preciso, register slice em AR/R |
 | `tb_accel.v` da Entrega 2 quebrar com a nova porta | Médio | Passo 3 adapta o TB antes de qualquer outra mudança |
@@ -1279,5 +1298,5 @@ Cada passo só começa quando os passos de que depende passaram no critério de 
 
 1. **Para o professor:** trocar AXI4-Lite por AXI4 depois da Entrega 1 precisa ser comunicado ou justificado formalmente?
 2. **Para o professor:** a síntese pode excluir as SRAMs (README §10)?
-3. **Para a equipe:** confirmar L medido no TB-MEM e atualizar as tabelas 7.2, 7.5 e 14.2 com o valor real.
+3. **Para a equipe:** medir L e `W_OV` no TB-MEM e no TB-DMA e atualizar as tabelas 7.2, 7.5 e 14.2 com os valores reais. A forma de onda da 4.4 sugere `W_OV` ≈ 4, não 3 (14.1).
 4. **Para a equipe:** definir a ferramenta de síntese (impacta 15.2).
