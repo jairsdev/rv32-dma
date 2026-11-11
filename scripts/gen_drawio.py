@@ -5,8 +5,8 @@ Uso: python3 scripts/gen_drawio.py [diretorio_saida]
 
 Diagramas:
   top_level  - blocos do sistema: CPU multiciclo (porta I na IMEM local, porta D no AXI),
-               axi_xbar 2x2 AXI4-Lite, DMA (master M1 + regs S1), DMEM, acelerador via sideband
-  accel      - acelerador output-stationary (exemplo T = 4): buffers, skew, malha de PEs, mux C
+               axi_xbar 2x2 AXI4 (burst), DMA (master M1 + regs S1), DMEM, acelerador via sideband
+  accel      - acelerador output-stationary (exemplo T = 4) com bancos ping-pong e banco C
   dma_fsm    - maquina de estados do DMA (tiling i0/j0/k0) e sub-FSM do master AXI4-Lite
   sequencia  - sequencia de uma operacao completa: configuracao, wfi, tiles, irq, W1C
 """
@@ -19,7 +19,7 @@ from diagram_lib import (Diagram, ST_ADAPTER, ST_AXI, ST_BOX, ST_DATA, ST_FRAME,
 
 DEFAULT_OUT = Path(__file__).resolve().parent.parent / "docs" / "img"
 
-BUS = "<b>/</b> 32 · AXI4-Lite"
+BUS = "<b>/</b> 32 · AXI4 burst"
 SMALL = "<span style='font-weight:normal;font-size:11px'>"
 
 
@@ -39,20 +39,20 @@ def top_level():
     v("ad_d", "cpu_axi_adapter", 230, 200, 175, 50, ST_ADAPTER)
 
     # DMA e acelerador
-    v("dma", f"DMA Controller<br>{SMALL}FSM própria · tiling i0/j0/k0<br>master AXI4-Lite (M1)<br>"
-             "regs CTRL/STATUS/ADDR/DIM<br>(slave AXI4-Lite, S1)</span>",
+    v("dma", f"DMA Controller<br>{SMALL}3 FSMs concorrentes<br>master AXI4 burst (M1)<br>"
+             "regs CTRL/STATUS/ADDR/DIM<br>(slave AXI4, S1)</span>",
       460, 30, 230, 160, ST_GRAY)
-    v("acc", f"Acelerador MatMul<br>{SMALL}buf A, buf B (T×T int8)<br>systolic array T×T (OS)<br>"
-             "acc int32 = banco C<br>T = ARRAY_SIZE ∈ {2, 4, 8}</span>",
+    v("acc", f"Acelerador MatMul<br>{SMALL}buf A, buf B × 2 bancos<br>systolic array T×T (OS)<br>"
+             "banco C (T×T int32)<br>T ∈ {2, 4, 8} · PINGPONG</span>",
       870, 30, 210, 160, ST_MASTER)
 
     # crossbar
-    v("xbar", f"axi_xbar 2×2 — AXI4-Lite 32 bits<br>{SMALL}M0 = CPU-D · M1 = DMA → S0 = DMEM · S1 = REGS · "
-              "decode addr[31:28] · round-robin por slave · DECERR fora do mapa</span>",
+    v("xbar", f"axi_xbar 2×2 — AXI4 32 bits, burst INCR<br>{SMALL}M0 = CPU-D · M1 = DMA → S0 = DMEM · S1 = REGS · "
+              "decode addr[31:28] · RR por slave e direção · lock por burst · DECERR</span>",
       230, 310, 850, 60, ST_SWITCH)
 
     # controlador de memoria + DMEM
-    v("mc", f"axi_mem_ctrl<br>{SMALL}slave AXI4-Lite → SRAM · WSTRB</span>", 430, 430, 300, 60, ST_ADAPTER)
+    v("mc", f"axi_mem_ctrl<br>{SMALL}slave AXI4 (burst) → SRAM · WSTRB</span>", 430, 430, 300, 60, ST_ADAPTER)
     v("dmem", f"SRAM DMEM compartilhada<br>{SMALL}0x1000_0000 · 64 KiB<br>"
               "dados do fw · A, B (int8) · C (int32) · pilha</span>",
       430, 540, 300, 80, ST_GRAY)
@@ -70,8 +70,8 @@ def top_level():
 
     # sideband DMA <-> acelerador (nao-AXI) e IRQ
     e("e_side", "dma", "acc", (690, 110), (870, 110),
-      "sideband (não-AXI)<br>A/B: we, row, col, data[8]<br>C: rd, row, col, data[32]<br>"
-      "tile_start · first_k<br>busy · tile_done", ST_SIDEBAND)
+      "sideband (não-AXI)<br>A/B: bank, row, word, data[32]<br>C: rd, row, col, data[32]<br>"
+      "tile_start/bank · first/last_k<br>busy · done · c_valid/release", ST_SIDEBAND)
     e("e_irq", "dma", "reg_cpu", (460, 100), (420, 100), "irq", ST_IRQ)
 
     # legenda
@@ -80,21 +80,21 @@ def top_level():
     legend = [
         ("leg_1", ST_MASTER, "CPU / Acelerador"),
         ("leg_2", ST_ADAPTER, "Adapter / controlador de memória"),
-        ("leg_3", ST_SWITCH, "Crossbar AXI4-Lite"),
+        ("leg_3", ST_SWITCH, "Crossbar AXI4"),
         ("leg_4", ST_GRAY, "DMA / memórias"),
     ]
     for i, (lid, st, txt) in enumerate(legend):
         y = 460 + i * 24
         v(lid, "", 815, y, 28, 16, st)
         v(lid + "_t", txt, 852, y - 2, 220, 20, ST_TEXT + "fontSize=11;")
-    notes = ["<b>/</b> 32 · AXI4-Lite = AXI4-Lite, 32 bits",
+    notes = ["<b>/</b> 32 · AXI4 burst = AXI4, 32 bits",
              "linha fina = interface nativa valid/ready",
              "tracejado azul = sideband DMA ↔ Acelerador",
              "tracejado vermelho = interrupção (irq)"]
     for i, txt in enumerate(notes):
         v(f"leg_l{i}", txt, 815, 560 + i * 20, 260, 20, ST_TEXT + "fontSize=11;")
 
-    v("title", "<b>RV32I + DMA + Systolic Array — Top-Level</b> (Entrega 1)", 20, 650, 700, 30,
+    v("title", "<b>RV32I + DMA + Systolic Array — Top-Level</b> (MAS v1, AXI4)", 20, 650, 700, 30,
       ST_TEXT + "fontSize=16;")
     return d
 
@@ -105,20 +105,20 @@ def accel(T=4):
     one_way = ST_SIDEBAND + "startArrow=none;"
     grid_region = ST_REGION.replace("verticalAlign=top", "verticalAlign=bottom") + "fillColor=#D5E3E6;"
 
-    v("reg", f"Acelerador MatMul — exemplo com T = ARRAY_SIZE = {T} · output-stationary",
+    v("reg", f"Acelerador MatMul — exemplo com T = ARRAY_SIZE = {T} · output-stationary · PINGPONG = 1",
       20, 10, 1060, 640, ST_REGION)
-    v("grid", "malha T×T de PEs · acc int32 em cada PE = banco C", 315, 185, 370, 300, grid_region)
+    v("grid", "malha T×T de PEs · acc int32 em cada PE (copiado para o banco C)", 315, 185, 370, 300, grid_region)
 
     # escrita dos buffers pelo DMA
-    v("dma_w", f"DMA<br>{SMALL}escrita dos buffers<br>(sideband)</span>", 40, 40, 200, 100, ST_GRAY)
-    v("buf_b", f"buf B (T×T int8)<br>{SMALL}leitura: linha k → T elementos</span>", 330, 40, 340, 50, ST_GRAY)
+    v("dma_w", f"DMA<br>{SMALL}escrita dos buffers<br>1 palavra (4 int8)/ciclo</span>", 40, 40, 200, 100, ST_GRAY)
+    v("buf_b", f"buf B × 2 bancos (T×T int8)<br>{SMALL}leitura: banco tile_bank, linha k</span>", 330, 40, 340, 50, ST_GRAY)
     v("skew_b", "skew B: coluna j atrasada j ciclos", 330, 120, 340, 40, ST_ADAPTER + "fontSize=11;")
-    v("buf_a", f"buf A<br>{SMALL}T×T int8<br><br>leitura:<br>coluna k →<br>T elementos</span>",
+    v("buf_a", f"buf A<br>{SMALL}× 2 bancos<br>T×T int8<br><br>leitura:<br>banco<br>tile_bank,<br>coluna k</span>",
       40, 210, 120, 250, ST_GRAY)
     v("skew_a", f"skew A<br>{SMALL}linha i<br>atrasada<br>i ciclos</span>", 180, 210, 100, 250, ST_ADAPTER)
 
-    e("e_wa", "dma_w", "buf_a", (100, 140), (100, 210), "A: we, row,<br>col, data[8]", one_way)
-    e("e_wb", "dma_w", "buf_b", (240, 65), (330, 65), "B: we, row,<br>col, data[8]", one_way)
+    e("e_wa", "dma_w", "buf_a", (100, 140), (100, 210), "A: we, bank, row,<br>word, data[32]", one_way)
+    e("e_wb", "dma_w", "buf_b", (240, 65), (330, 65), "B: we, bank, row,<br>word, data[32]", one_way)
     e("e_bs", "buf_b", "skew_b", (500, 90), (500, 120), "", ST_DATA)
     e("e_as", "buf_a", "skew_a", (160, 335), (180, 335), "", ST_DATA)
 
@@ -137,17 +137,17 @@ def accel(T=4):
                 e(f"e_v{i}{j}", f"pe{i - 1}{j}", f"pe{i}{j}", (x + 35, y - 20), (x + 35, y), "", ST_DATA)
 
     # leitura de C (acumuladores) pelo DMA
-    v("mux_c", f"mux C<br>{SMALL}T² acumuladores<br>int32, escolhidos<br>por (c_row, c_col)</span>",
+    v("mux_c", f"banco C<br>{SMALL}T×T int32<br>cópia dos acc<br>em 1 ciclo (last_k)<br><br>+ mux T²:1<br>por (c_row, c_col)</span>",
       740, 210, 150, 250, ST_ADAPTER)
-    v("dma_c", f"DMA<br>{SMALL}c_rd, c_row, c_col →<br>← c_rdata[31:0]</span>", 920, 280, 150, 110, ST_GRAY)
-    e("e_mux", "grid", "mux_c", (685, 335), (740, 335), "T² × 32", ST_DATA)
+    v("dma_c", f"DMA<br>{SMALL}c_rd, c_row, c_col →<br>← c_rdata[31:0]<br>← c_valid<br>c_release →</span>", 920, 280, 150, 110, ST_GRAY)
+    e("e_mux", "grid", "mux_c", (685, 335), (740, 335), "cópia T²×32", ST_DATA)
     e("e_c", "mux_c", "dma_c", (890, 335), (920, 335), "", ST_SIDEBAND)
 
     # controle do tile
-    v("ctrl", f"controle do tile<br>{SMALL}contador t = 0 … 3T−2 · en dos PEs<br>first_k → clr_acc no tile_start</span>",
+    v("ctrl", f"controle do tile<br>{SMALL}contador t = 0 … 3T−2 · first_k → clr_acc<br>last_k → cópia p/ banco C (S_WAIT_C se c_valid)</span>",
       360, 520, 310, 70, ST_SWITCH)
     v("dma_ctl", f"DMA<br>{SMALL}controle do tile</span>", 40, 520, 170, 70, ST_GRAY)
-    e("e_ctl", "dma_ctl", "ctrl", (210, 555), (360, 555), "tile_start, first_k →<br>← busy, tile_done", ST_SIDEBAND)
+    e("e_ctl", "dma_ctl", "ctrl", (210, 555), (360, 555), "tile_start, tile_bank,<br>first_k, last_k →<br>← busy, tile_done", ST_SIDEBAND)
     e("e_en", "ctrl", "grid", (500, 520), (500, 485), "en, clr_acc", ST_DATA)
 
     v("pe_det", "<b>PE(i,j)</b><br>a_out ← a_in · b_out ← b_in (registrados)<br>acc ← acc + a_in × b_in<br>"
@@ -232,16 +232,16 @@ def sequencia():
     msg("m2", "cpu", "regs", 135, "sw CTRL = START | IRQ_EN")
     msg("m3", "regs", "dma", 175, "start")
     v("n_wfi", "wfi → WAIT", 40, 195, 120, 30, ST_NOTE)
-    msg("m4", "dma", "dmem", 285, "AR: linhas de A e B")
+    msg("m4", "dma", "dmem", 285, "AR burst: linhas de A e B")
     msg("m5", "dmem", "dma", 315, "R: 4 × int8 por palavra", ST_RET)
-    msg("m6", "dma", "acc", 350, "buf A/B: we, row, col, data[8]")
-    msg("m7", "dma", "acc", 390, "tile_start (first_k = k0 = 0)")
+    msg("m6", "dma", "acc", 350, "buf A/B: bank, row, word, data[32]")
+    msg("m7", "dma", "acc", 390, "tile_start (tile_bank, first_k, last_k)")
     v("n_comp", "3T−1 ciclos", 790, 405, 140, 30, ST_NOTE)
     msg("m8", "acc", "dma", 465, "tile_done")
-    msg("m9", "dma", "acc", 520, "c_rd, c_row, c_col")
+    msg("m9", "dma", "acc", 520, "c_valid → c_rd, c_row, c_col")
     msg("m10", "acc", "dma", 550, "c_rdata[31:0]", ST_RET)
-    msg("m11", "dma", "dmem", 585, "AW + W: C (int32)")
-    msg("m12", "dmem", "dma", 612, "B: OKAY", ST_RET)
+    msg("m11", "dma", "dmem", 585, "AW + W burst: linha de C (int32)")
+    msg("m12", "dmem", "dma", 612, "B: OKAY → c_release", ST_RET)
     msg("m13", "dma", "cpu", 670, "irq = DONE ∧ IRQ_EN (acorda do wfi)", irq)
     msg("m14", "cpu", "regs", 710, "lw STATUS (DONE = 1)")
     msg("m15", "cpu", "regs", 750, "sw STATUS = DONE (W1C)")
