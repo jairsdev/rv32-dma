@@ -5,7 +5,7 @@
 | Campo | Valor |
 |---|---|
 | Documento | `docs/dma_mas.md` |
-| Versão | 1.0 (rascunho para revisão da equipe) |
+| Versão | 1.1 (rascunho para revisão da equipe) |
 | Data | 11/11/2026 |
 | Responsável pelo DMA | Luiz Augusto dos Santos Oliveira ([@guto7191](https://github.com/guto7191)) |
 | Interconexão AXI | João Vítor Cedraz Carneiro ([@JvCedrazC](https://github.com/JvCedrazC)) |
@@ -17,6 +17,7 @@
 | Versão | Data | Mudança |
 |---|---|---|
 | 1.0 | 11/11/2026 | Primeira versão: sistema em AXI4 com burst INCR, prefetch com bancos ping-pong, parâmetro `PINGPONG` |
+| 1.1 | 11/11/2026 | Revisão da auditoria: motores com fila de 1 comando; dreno que para na linha e só termina com as FSMs paradas; reset dos bancos no `CHECK`; `last_blk` no lugar de `n_blocks`; `c_release` com tempo definido; `acc_busy`/`acc_active`; `ADDR_*[1:0]` armazenados; fórmula do ping-pong com gargalo de escrita; forma de onda de escrita corrigida |
 
 ### Como ler este documento
 
@@ -75,10 +76,11 @@ Esta versão muda duas coisas em relação ao README:
 | Documento | Uso |
 |---|---|
 | [`docs/spec/enunciado.pdf`](spec/enunciado.pdf) §3, §5, §6, §7, §11 | Requisitos do DMA e critérios de avaliação |
-| [`docs/spec/IHI0022E_amba_axi_and_ace_protocol_spec_4.pdf`](spec/IHI0022E_amba_axi_and_ace_protocol_spec_4.pdf) | Cap. A3 (handshake, dependências entre canais, bursts, regra dos 4 KB), A4 (sinais adicionais), A5 (IDs e ordenação) |
+| [`docs/spec/IHI0022E_amba_axi_and_ace_protocol_spec_4.pdf`](spec/IHI0022E_amba_axi_and_ace_protocol_spec_4.pdf) | Cap. A3 (handshake, dependências entre canais, bursts, regra dos 4 KB), A5 (IDs e ordenação), A8 (sinais adicionais: QoS e REGION) |
 | [`docs/spec/102202_0100_01_Introduction_to_AMBA_AXI.pdf`](spec/102202_0100_01_Introduction_to_AMBA_AXI.pdf), [`Guia_AMBA_AXI4.docx`](spec/Guia_AMBA_AXI4.docx) | Introdução didática ao AXI4 |
 | [`README.md`](../README.md) §3 (mapa de memória e layout), §5 (acelerador), §8 (golden model e casos de teste) | Partes da especificação que este MAS mantém |
 | [`rtl/accel/accel.v`](../rtl/accel/accel.v), [`model/golden.py`](../model/golden.py) | Acelerador atual (Entrega 2) e modelo de referência |
+| [`docs/spec/DMA.pdf`](spec/DMA.pdf) | Contexto: artigo sobre um controlador DMA multicanal com FIFO em MPSoC. Não é normativo; a arquitetura deste MAS é própria |
 
 ---
 
@@ -111,9 +113,11 @@ Cada requisito aponta para a seção que o atende e para o teste que o comprova 
 
 Fonte editável: [`img/top_level.drawio`](img/top_level.drawio).
 
-### 3.1 O que muda em relação ao README
+### 3.1 O que muda em relação à Entrega 1
 
-| Item | README (Entregas 1–2) | Este MAS |
+A coluna do meio descreve a especificação da Entrega 1 (README em `main`). O README desta branch já foi atualizado e aponta para este MAS.
+
+| Item | Entrega 1 (`main`) | Este MAS |
 |---|---|---|
 | Protocolo | AXI4-Lite, single-beat, sem ID | AXI4, bursts INCR até 16 beats, ID |
 | Master DMA (M1) | 1 palavra por transação, leitura e escrita alternadas | 1 burst por linha de tile; 1 leitura e 1 escrita em andamento ao mesmo tempo |
