@@ -45,7 +45,7 @@
     <tspan font-size="12" font-weight="bold">C_FREE</tspan>
   </text>
   <text x="450.0" y="481.7" text-anchor="middle" fill="#1A1A1A">
-    <tspan font-size="11" font-weight="normal">banco → EMPTY · cp_ptr ^= PINGPONG · cnt += 1</tspan>
+    <tspan font-size="11" font-weight="normal">banco → EMPTY · cp_ptr ^= PINGPONG</tspan>
   </text>
   <rect x="320" y="560" width="260" height="60" fill="#E8F6FA" stroke="#0B6F8A" stroke-width="2" rx="9.0" ry="9.0" />
   <text x="450.0" y="586.7" text-anchor="middle" fill="#1A1A1A">
@@ -62,13 +62,13 @@
   <polyline points="450,500 450,560" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#m_fill_333333)" />
   <polyline points="320,170 180,170 180,590 320,590" fill="none" stroke="#D0021B" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#m_fill_D0021B)" />
   <polyline points="580,590 780,590 780,70 580,70" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#m_fill_333333)" />
-  <rect x="409.6" y="112.8" width="80.8" height="14.5" fill="#FFFFFF" />
+  <rect x="437.6" y="112.8" width="24.8" height="14.5" fill="#FFFFFF" />
   <text x="450.0" y="123.5" text-anchor="middle" fill="#000000">
-    <tspan font-size="10" font-weight="normal">run · cnt = 0</tspan>
+    <tspan font-size="10" font-weight="normal">run</tspan>
   </text>
-  <rect x="370.4" y="212.8" width="159.2" height="14.5" fill="#FFFFFF" />
+  <rect x="336.8" y="212.8" width="226.4" height="14.5" fill="#FFFFFF" />
   <text x="450.0" y="223.5" text-anchor="middle" fill="#000000">
-    <tspan font-size="10" font-weight="normal">bank[cp_ptr] = FULL ∧ ¬busy</tspan>
+    <tspan font-size="10" font-weight="normal">¬stop ∧ bank[cp_ptr] = FULL ∧ ¬acc_busy</tspan>
   </text>
   <rect x="426.4" y="312.8" width="47.2" height="14.5" fill="#FFFFFF" />
   <text x="450.0" y="323.5" text-anchor="middle" fill="#000000">
@@ -78,17 +78,17 @@
   <text x="450.0" y="423.5" text-anchor="middle" fill="#000000">
     <tspan font-size="10" font-weight="normal">tile_done</tspan>
   </text>
-  <rect x="681.8" y="312.8" width="86.4" height="14.5" fill="#FFFFFF" />
-  <text x="725.0" y="323.5" text-anchor="middle" fill="#000000">
-    <tspan font-size="10" font-weight="normal">cnt &lt; n_blocks</tspan>
+  <rect x="685.8" y="312.8" width="58.4" height="14.5" fill="#FFFFFF" />
+  <text x="715.0" y="323.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">¬last_blk</tspan>
   </text>
-  <rect x="406.8" y="522.8" width="86.4" height="14.5" fill="#FFFFFF" />
+  <rect x="398.4" y="522.8" width="103.2" height="14.5" fill="#FFFFFF" />
   <text x="450.0" y="533.5" text-anchor="middle" fill="#000000">
-    <tspan font-size="10" font-weight="normal">cnt = n_blocks</tspan>
+    <tspan font-size="10" font-weight="normal">last_blk do banco</tspan>
   </text>
-  <rect x="142.4" y="372.8" width="75.2" height="14.5" fill="#FFFFFF" />
+  <rect x="128.4" y="372.8" width="103.2" height="14.5" fill="#FFFFFF" />
   <text x="180.0" y="383.5" text-anchor="middle" fill="#D0021B">
-    <tspan font-size="10" font-weight="normal">stop ∧ ¬busy</tspan>
+    <tspan font-size="10" font-weight="normal">stop (prioridade)</tspan>
   </text>
   <rect x="764.8" y="322.8" width="30.4" height="14.5" fill="#FFFFFF" />
   <text x="780.0" y="333.5" text-anchor="middle" fill="#000000">

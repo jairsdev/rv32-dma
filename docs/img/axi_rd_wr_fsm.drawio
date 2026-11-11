@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net" version="24.0.0">
   <diagram id="axi_rd_wr_fsm" name="Motores AXI">
-    <mxGraphModel dx="1100" dy="580" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="580" math="0" shadow="0">
+    <mxGraphModel dx="1100" dy="650" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="650" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -10,7 +10,7 @@
         <mxCell vertex="1" parent="1" id="fw" value="dma_wr_engine — canais AW / W / B" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#888888;dashed=1;fontSize=11;fontStyle=2;fontColor=#4A5555;align=left;verticalAlign=top;spacingLeft=8;spacingTop=4;">
           <mxGeometry x="560" y="20" width="520" height="540" as="geometry" />
         </mxCell>
-        <mxCell vertex="1" parent="1" id="ri" value="R_IDLE&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;rd_cmd_ready = 1&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#FFFFFF;strokeColor=#0B6F8A;strokeWidth=2;fontColor=#1A1A1A;">
+        <mxCell vertex="1" parent="1" id="ri" value="R_IDLE&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;sem comando · carrega a fila&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#FFFFFF;strokeColor=#0B6F8A;strokeWidth=2;fontColor=#1A1A1A;">
           <mxGeometry x="150" y="60" width="220" height="60" as="geometry" />
         </mxCell>
         <mxCell vertex="1" parent="1" id="ra" value="R_AR&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;ARVALID · ARLEN = seg_len−1&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#FFFFFF;strokeColor=#0B6F8A;strokeWidth=2;fontColor=#1A1A1A;">
@@ -22,10 +22,10 @@
         <mxCell vertex="1" parent="1" id="rz" value="R_ZERO&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;escreve 0 nas palavras restantes&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#FFFFFF;strokeColor=#0B6F8A;strokeWidth=2;fontColor=#1A1A1A;">
           <mxGeometry x="150" y="380" width="220" height="60" as="geometry" />
         </mxCell>
-        <mxCell vertex="1" parent="1" id="rdn" value="R_DONE&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;pulso rd_done&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#E8F6FA;strokeColor=#0B6F8A;strokeWidth=2;fontColor=#1A1A1A;">
+        <mxCell vertex="1" parent="1" id="rdn" value="fim de linha&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;pulso rd_done · carrega a fila&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#FFFFFF;strokeColor=#0B6F8A;fontColor=#1A1A1A;align=left;spacingLeft=8;">
           <mxGeometry x="150" y="480" width="220" height="60" as="geometry" />
         </mxCell>
-        <mxCell edge="1" parent="1" id="r1" value="cmd · nbytes &amp;gt; 0" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="ri" target="ra">
+        <mxCell edge="1" parent="1" id="r1" value="fila: nbytes &amp;gt; 0" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="ri" target="ra">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell edge="1" parent="1" id="r2" value="ARREADY" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="ra" target="rd">
@@ -40,10 +40,10 @@
             <mxPoint x="-5" y="0" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell edge="1" parent="1" id="r4" value="RLAST ∧ word &amp;lt; WPR" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="rd" target="rz">
+        <mxCell edge="1" parent="1" id="r4" value="RLAST ∧ word &amp;lt; WPR−1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="rd" target="rz">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell edge="1" parent="1" id="r5" value="RLAST ∧&lt;br&gt;word = WPR" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=1.0000;exitY=0.5000;exitDx=0;exitDy=0;entryX=1.0000;entryY=0.3333;entryDx=0;entryDy=0;" source="rd" target="rdn">
+        <mxCell edge="1" parent="1" id="r5" value="RLAST ∧&lt;br&gt;word = WPR−1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=1.0000;exitY=0.5000;exitDx=0;exitDy=0;entryX=1.0000;entryY=0.3333;entryDx=0;entryDy=0;" source="rd" target="rdn">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="440" y="290" />
@@ -52,7 +52,7 @@
             <mxPoint x="-10" y="40" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell edge="1" parent="1" id="r6" value="cmd ·&lt;br&gt;nbytes = 0" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=1.0000;exitY=0.3333;exitDx=0;exitDy=0;entryX=1.0000;entryY=0.3333;entryDx=0;entryDy=0;" source="ri" target="rz">
+        <mxCell edge="1" parent="1" id="r6" value="fila:&lt;br&gt;nbytes = 0" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=1.0000;exitY=0.3333;exitDx=0;exitDy=0;entryX=1.0000;entryY=0.3333;entryDx=0;entryDy=0;" source="ri" target="rz">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="490" y="80" />
@@ -61,39 +61,54 @@
             <mxPoint x="0" y="-90" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell edge="1" parent="1" id="r7" value="word = WPR−1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="rz" target="rdn">
+        <mxCell edge="1" parent="1" id="r7" value="word = WPR−1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.3636;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.3636;entryY=0.0000;entryDx=0;entryDy=0;" source="rz" target="rdn">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell edge="1" parent="1" id="r8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.0000;exitY=0.5000;exitDx=0;exitDy=0;entryX=0.0000;entryY=0.3333;entryDx=0;entryDy=0;" source="rdn" target="ri">
+        <mxCell edge="1" parent="1" id="r8" value="fila vazia" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.0000;exitY=0.6667;exitDx=0;exitDy=0;entryX=0.0000;entryY=0.3333;entryDx=0;entryDy=0;" source="rdn" target="ri">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="40" y="510" />
+              <mxPoint x="40" y="520" />
               <mxPoint x="40" y="80" />
             </Array>
+            <mxPoint x="0" y="120" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell vertex="1" parent="1" id="wi" value="W_IDLE&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;wr_cmd_ready = 1 · enche fila de C&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#FFFFFF;strokeColor=#0B6F8A;strokeWidth=2;fontColor=#1A1A1A;">
+        <mxCell edge="1" parent="1" id="r9" value="dados" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.0000;exitY=0.2500;exitDx=0;exitDy=0;entryX=0.0000;entryY=0.7500;entryDx=0;entryDy=0;" source="rdn" target="ra">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="60" y="495" />
+              <mxPoint x="60" y="205" />
+            </Array>
+            <mxPoint x="0" y="40" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell edge="1" parent="1" id="r10" value="padding" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.6818;exitY=0.0000;exitDx=0;exitDy=0;entryX=0.6818;entryY=1.0000;entryDx=0;entryDy=0;" source="rdn" target="rz">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="30" y="0" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="wi" value="W_IDLE&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;sem comando · carrega a fila · lê C&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#FFFFFF;strokeColor=#0B6F8A;strokeWidth=2;fontColor=#1A1A1A;">
           <mxGeometry x="690" y="60" width="220" height="60" as="geometry" />
         </mxCell>
-        <mxCell vertex="1" parent="1" id="wa" value="W_ADDR&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;AWVALID · WVALID = fila ≠ ∅&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#FFFFFF;strokeColor=#0B6F8A;strokeWidth=2;fontColor=#1A1A1A;">
+        <mxCell vertex="1" parent="1" id="wa" value="W_ADDR&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;AWVALID · WVALID = fila de C ≠ ∅&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#FFFFFF;strokeColor=#0B6F8A;strokeWidth=2;fontColor=#1A1A1A;">
           <mxGeometry x="690" y="160" width="220" height="60" as="geometry" />
         </mxCell>
-        <mxCell vertex="1" parent="1" id="wd" value="W_DATA&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;WVALID = fila ≠ ∅ · WLAST no fim&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#FFFFFF;strokeColor=#0B6F8A;strokeWidth=2;fontColor=#1A1A1A;">
+        <mxCell vertex="1" parent="1" id="wd" value="W_DATA&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;WVALID = fila de C ≠ ∅ · WLAST no fim&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#FFFFFF;strokeColor=#0B6F8A;strokeWidth=2;fontColor=#1A1A1A;">
           <mxGeometry x="690" y="260" width="220" height="60" as="geometry" />
         </mxCell>
         <mxCell vertex="1" parent="1" id="wb" value="W_RESP&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;BREADY = 1&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#FFFFFF;strokeColor=#0B6F8A;strokeWidth=2;fontColor=#1A1A1A;">
           <mxGeometry x="690" y="380" width="220" height="60" as="geometry" />
         </mxCell>
-        <mxCell vertex="1" parent="1" id="wdn" value="W_DONE&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;pulso wr_done&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#E8F6FA;strokeColor=#0B6F8A;strokeWidth=2;fontColor=#1A1A1A;">
+        <mxCell vertex="1" parent="1" id="wdn" value="fim de linha&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;pulso wr_done · carrega a fila&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#FFFFFF;strokeColor=#0B6F8A;fontColor=#1A1A1A;align=left;spacingLeft=8;">
           <mxGeometry x="690" y="480" width="220" height="60" as="geometry" />
         </mxCell>
-        <mxCell edge="1" parent="1" id="w1" value="cmd aceito" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="wi" target="wa">
+        <mxCell edge="1" parent="1" id="w1" value="fila com comando" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="wi" target="wa">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell edge="1" parent="1" id="w2" value="AWREADY (W ainda em curso)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="wa" target="wd">
+        <mxCell edge="1" parent="1" id="w2" value="aw_ok ∧ ¬w_ok" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="wa" target="wd">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell edge="1" parent="1" id="w3" value="aw_done ∧&lt;br&gt;w_done" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=1.0000;exitY=0.5000;exitDx=0;exitDy=0;entryX=1.0000;entryY=0.3333;entryDx=0;entryDy=0;" source="wa" target="wb">
+        <mxCell edge="1" parent="1" id="w3" value="aw_ok ∧&lt;br&gt;w_ok" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=1.0000;exitY=0.5000;exitDx=0;exitDy=0;entryX=1.0000;entryY=0.3333;entryDx=0;entryDy=0;" source="wa" target="wb">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="1000" y="190" />
@@ -101,7 +116,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell edge="1" parent="1" id="w4" value="último beat aceito" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="wd" target="wb">
+        <mxCell edge="1" parent="1" id="w4" value="w_ok" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="wd" target="wb">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell edge="1" parent="1" id="w5" value="BVALID ∧&lt;br&gt;resta seg." style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.0000;exitY=0.5000;exitDx=0;exitDy=0;entryX=0.0000;entryY=0.5000;entryDx=0;entryDy=0;" source="wb" target="wa">
@@ -116,13 +131,26 @@
         <mxCell edge="1" parent="1" id="w6" value="BVALID ∧ fim da linha" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="wb" target="wdn">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell edge="1" parent="1" id="w7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.0000;exitY=0.5000;exitDx=0;exitDy=0;entryX=0.0000;entryY=0.3333;entryDx=0;entryDy=0;" source="wdn" target="wi">
+        <mxCell edge="1" parent="1" id="w7" value="fila vazia" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.0000;exitY=0.6667;exitDx=0;exitDy=0;entryX=0.0000;entryY=0.3333;entryDx=0;entryDy=0;" source="wdn" target="wi">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="590" y="510" />
-              <mxPoint x="590" y="80" />
+              <mxPoint x="580" y="520" />
+              <mxPoint x="580" y="80" />
             </Array>
+            <mxPoint x="0" y="120" as="offset" />
           </mxGeometry>
+        </mxCell>
+        <mxCell edge="1" parent="1" id="w8" value="próximo" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.0000;exitY=0.2500;exitDx=0;exitDy=0;entryX=0.0000;entryY=0.7500;entryDx=0;entryDy=0;" source="wdn" target="wa">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="600" y="495" />
+              <mxPoint x="600" y="205" />
+            </Array>
+            <mxPoint x="0" y="40" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="note" value="Fila de 1 comando por motor: cmd_ready = fila vazia · idle = *_IDLE ∧ fila vazia. &quot;fim de linha&quot; não é estado: no mesmo ciclo do último beat (ou do B) sai o pulso de done e o comando da fila vira corrente.&lt;br&gt;aw_ok = aw_done ∨ (AWVALID ∧ AWREADY) · w_ok = w_done ∨ (WVALID ∧ WREADY ∧ WLAST)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=11;">
+          <mxGeometry x="20" y="575" width="1060" height="60" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
