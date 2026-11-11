@@ -193,7 +193,7 @@ Direções do ponto de vista do master. "Fixo" é o único valor permitido no pe
 1. **Handshake (IHI0022E A3.2):** a transferência ocorre no ciclo com `VALID ∧ READY`. Um `VALID` nunca pode depender combinacionalmente do `READY` do mesmo canal. Depois de subir, `VALID` e todo o payload ficam estáveis até o handshake.
 2. **Dependências entre canais (A3.3):**
    - O slave pode esperar `AWVALID` e `WVALID` antes de dar `AWREADY`.
-   - O master **não pode** esperar `AWREADY` para dar `WVALID`, nem o contrário. O DMA levanta os dois juntos.
+   - O master **não pode** esperar `AWREADY` para dar `WVALID`, nem o contrário. O DMA emite AW e W de forma independente: `AWVALID` sobe ao entrar em `W_ADDR` e `WVALID` sobe assim que a fila de C tem dado (10.2), sem um esperar o outro.
    - `BVALID` só sobe depois do último beat de W (`WLAST`) e do handshake de AW.
    - Os beats de R só começam depois do handshake de AR.
 3. **Regra dos 4 KB (A3.4.1):** nenhum burst cruza uma fronteira de 4 KB. O master divide o pedido (seção 10.3). Slaves podem assumir que a regra é respeitada.
@@ -225,19 +225,25 @@ RDATA                          D0    D1
 RLAST      __________________________/‾‾‾\___
 ```
 
-Escrita de uma linha de C com T = 8 (8 beats) e backpressure do slave em W:
+Escrita de uma linha de C com T = 8 (8 beats), com o `axi_mem_ctrl` da seção 12.2 e uma backpressure em W no ciclo 4:
 
 ```
-ciclo        0   1   2   3   4   5   6   7   8   9  10  11  12
-AWVALID    _/‾‾‾‾‾\______________________________________________
-AWREADY    _____/‾\______________________________________________
-WVALID     _/‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾\______________
-WREADY     _____/‾‾‾‾‾‾‾‾‾\___/‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾\_____________   WREADY = 0 no ciclo 4
-WDATA        C0  C0  C1  C2  C3  C3  C4  C5  C6  C7
-WLAST      _____________________________________/‾‾‾\____________
-BVALID     _____________________________________________/‾‾‾\____
-BREADY     _/‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾\____
+ciclo        0   1   2   3   4   5   6   7   8   9   10  11  12
+AWVALID    /‾‾‾‾‾‾‾\___________________________________________
+AWREADY    ____/‾‾‾\___________________________________________
+WVALID     ____/‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾\_______
+WREADY     ________/‾‾‾‾‾‾‾\___/‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾\_______
+WDATA            C0  C0  C1  C2  C2  C3  C4  C5  C6  C7
+WLAST      ________________________________________/‾‾‾\_______
+BVALID     ____________________________________________/‾‾‾\___
+BREADY     ____________________________________________/‾‾‾\___
 ```
+
+- **Ciclo −1 (`W_IDLE`):** o comando é aceito e sai o `c_rd` da coluna 0.
+- **Ciclo 0 (`W_ADDR`):** `AWVALID` sobe. A fila de C recebe `c_rdata` no fim do ciclo, então `WVALID` só sobe no ciclo 1 (10.2).
+- **Ciclo 1:** AW aceito (`M_IDLE` do `axi_mem_ctrl`).
+- **Ciclo 2:** o controlador entra em `M_WR` e dá `WREADY`. Os beats são aceitos nos ciclos 2, 3 e 5 a 10; no ciclo 4 o slave segura com `WREADY = 0`.
+- **Ciclo 11:** depois do `WLAST` no ciclo 10, o controlador vai para `M_WR_RESP`, `BVALID` sobe e o motor, em `W_RESP`, dá `BREADY`.
 
 ---
 
@@ -274,7 +280,8 @@ Fonte editável: [`img/dma_blocks.drawio`](img/dma_blocks.drawio).
 | | `tile_start` | out | 1 | Pulso: inicia o tile |
 | | `tile_bank` | out | 1 | Banco que o tile usa (amostrado com `tile_start`) |
 | | `first_k`, `last_k` | out | 1 | Amostrados com `tile_start`: primeiro / último bloco k0 do tile |
-| | `busy` | in | 1 | Malha ocupada |
+| | `busy` | in | 1 | Malha ocupada (inclui a espera pelo banco C). Dentro do DMA este sinal se chama **`acc_busy`**, para não confundir com `STATUS.BUSY` |
+| | `acc_active` | in | 1 | Malha calculando (estado `A_RUN` do acelerador, sem a espera pelo banco C). Conta `CYC_COMPUTE` |
 | | `tile_done` | in | 1 | Pulso: tile terminou; o banco usado está livre |
 | | `c_valid` | in | 1 | Há um C completo esperando para ser gravado |
 | | `c_release` | out | 1 | Pulso: C foi gravado; o acelerador pode sobrescrevê-lo |
@@ -286,45 +293,52 @@ Fonte editável: [`img/dma_blocks.drawio`](img/dma_blocks.drawio).
 
 | Módulo | Arquivo | Função |
 |---|---|---|
-| `dma_regs` | `rtl/dma/dma_regs.v` | Slave AXI4 S1. Banco de registradores (seção 6), `irq`, contadores `CYCLES` e `CYC_COMPUTE`. Gera `start` e `soft_reset` (pulsos) e recebe `done`, `error` e `err_code` |
-| `dma_ctrl` | `rtl/dma/dma_ctrl.v` | FSM principal: valida a configuração, calcula strides e contagens, libera as três FSMs, coordena erro, `SOFT_RESET` e dreno (9.1) |
-| `dma_load` | `rtl/dma/dma_load.v` | Produtor. Percorre (i0, j0, k0), espera um banco livre e pede ao `dma_rd_engine` as T linhas de A e as T linhas de B (9.2) |
-| `dma_compute` | `rtl/dma/dma_compute.v` | Dispara cada tile quando o banco está cheio e a malha livre; marca `first_k`/`last_k`; libera o banco no `tile_done` (9.3) |
-| `dma_store` | `rtl/dma/dma_store.v` | Consumidor. Espera `c_valid` e pede ao `dma_wr_engine` as linhas válidas de C; depois dá `c_release` (9.4) |
-| `dma_rd_engine` | `rtl/dma/dma_rd_engine.v` | Dono dos canais AR/R. Transforma "linha de A/B" em 1 ou 2 bursts (divisão em 4 KB), alinha bytes, zera o padding e escreve no buffer (10.1) |
-| `dma_wr_engine` | `rtl/dma/dma_wr_engine.v` | Dono dos canais AW/W/B. Transforma "linha de C" em bursts, busca os valores com `c_rd` por uma fila de 2 entradas e gera `WLAST` (10.2) |
-| `dma_bank_ctrl` | dentro de `dma.v` | Estado de cada banco (EMPTY/LOADING/FULL/COMPUTING) e ponteiros `ld_ptr`/`cp_ptr` (7.8) |
+| `dma_regs` | `rtl/dma/dma_regs.v` | Slave AXI4 S1. Banco de registradores (seção 6), `irq`, contadores `CYCLES` (conta com `ctrl_busy`) e `CYC_COMPUTE` (conta com `acc_active`). Gera `start` e `soft_reset` (pulsos) e recebe `ctrl_busy`, `done`, `error` e `err_code` |
+| `dma_ctrl` | `rtl/dma/dma_ctrl.v` | FSM principal: valida a configuração, calcula strides e limites, zera os bancos, libera as três FSMs, coordena erro, `SOFT_RESET` e dreno (9.1) |
+| `dma_load` | `rtl/dma/dma_load.v` | Produtor. Percorre (i0, j0, k0), espera um banco livre e passa ao `dma_rd_engine` as T linhas de A e as T linhas de B, sem esperar cada linha terminar (9.2) |
+| `dma_compute` | `rtl/dma/dma_compute.v` | Dispara cada tile quando o banco está cheio e a malha livre; repassa `first_k`/`last_k`; libera o banco no `tile_done`; termina no banco com `last_blk` (9.3) |
+| `dma_store` | `rtl/dma/dma_store.v` | Consumidor. Espera `c_valid` e passa ao `dma_wr_engine` as linhas válidas de C; depois dá `c_release` (9.4) |
+| `dma_rd_engine` | `rtl/dma/dma_rd_engine.v` | Dono dos canais AR/R. Guarda o comando corrente + 1 na fila. Transforma "linha de A/B" em 1 ou 2 bursts (divisão em 4 KB), alinha bytes, zera o padding e escreve no buffer (10.1) |
+| `dma_wr_engine` | `rtl/dma/dma_wr_engine.v` | Dono dos canais AW/W/B. Guarda o comando corrente + 1 na fila. Transforma "linha de C" em bursts, busca os valores com `c_rd` por uma fila de 2 entradas e gera `WLAST` (10.2) |
+| `dma_bank_ctrl` | dentro de `dma.v` | Estado de cada banco (EMPTY/LOADING/FULL/COMPUTING), metadados (`first_k`, `last_k`, `last_blk`) e ponteiros `ld_ptr`/`cp_ptr` (7.8). Zerado pelo `dma_ctrl` em `CHECK` (`bank_clr`) |
 | `dma` | `rtl/dma/dma.v` | Top: instancia e liga os módulos; multiplexa a porta do buffer (só o `dma_rd_engine` escreve) e a porta de C (só o `dma_wr_engine` lê) |
 
 Separar AR/R e AW/W/B em dois motores independentes é o que permite **ler o próximo bloco e gravar o C anterior ao mesmo tempo**. Os dois nunca disputam um canal.
 
 ### 5.4 Interface interna entre FSMs e motores
 
-Comandos com handshake `valid/ready`. O motor aceita um comando, executa e devolve um pulso de `done`.
+Comandos com handshake `valid/ready`. Cada motor guarda **o comando corrente e mais um na fila** (registrador de 1 entrada):
+
+- **Fila livre:** `cmd_ready` vale 1, então a FSM entrega a linha seguinte enquanto o motor ainda executa a atual.
+- **Fim de linha:** o motor dá um pulso de `done` e, no mesmo ciclo, puxa o comando da fila, se houver. As linhas terminam na ordem em que foram entregues.
+- **Motor ocioso:** `idle` = nenhum comando corrente e fila vazia.
+- **Custo:** o handshake entre FSM e motor fica escondido; o custo de uma linha é o do barramento (≈ L + beats).
 
 **`dma_load` → `dma_rd_engine`** (uma linha de tile):
 
 | Sinal | Largura | Descrição |
 |---|---|---|
-| `rd_cmd_valid` / `rd_cmd_ready` | 1 | Handshake |
+| `rd_cmd_valid` / `rd_cmd_ready` | 1 | Handshake. `rd_cmd_ready` = fila livre |
 | `rd_cmd_addr` | 32 | Endereço do primeiro byte válido da linha |
 | `rd_cmd_nbytes` | ⌈log₂(T+1)⌉ | Bytes válidos na linha (0 … T). 0 = linha inteira de padding, sem acesso à memória |
 | `rd_cmd_sel` | 1 | 0 = buf A, 1 = buf B |
 | `rd_cmd_bank` | 1 | Banco de destino |
 | `rd_cmd_row` | IW | Linha do buffer |
-| `rd_done` | 1 | Pulso: as `WPR` palavras da linha foram escritas no buffer |
-| `rd_err` | 1 | Nível: algum `RRESP ≠ OKAY` desde o `start` (limpo pelo `dma_ctrl`) |
+| `rd_done` | 1 | Pulso: as `WPR` palavras de uma linha foram escritas no buffer (uma linha por pulso, na ordem dos comandos) |
+| `rd_idle` | 1 | Nível: nenhum comando corrente e fila vazia |
+| `rd_err` | 1 | Nível: algum `RRESP ≠ OKAY` desde o `start` (limpo pelo `dma_ctrl` em `CHECK`) |
 
 **`dma_store` → `dma_wr_engine`** (uma linha de C):
 
 | Sinal | Largura | Descrição |
 |---|---|---|
-| `wr_cmd_valid` / `wr_cmd_ready` | 1 | Handshake |
+| `wr_cmd_valid` / `wr_cmd_ready` | 1 | Handshake. `wr_cmd_ready` = fila livre |
 | `wr_cmd_addr` | 32 | Endereço de C[i0+r][j0] |
 | `wr_cmd_nwords` | ⌈log₂(T+1)⌉ | Elementos válidos (1 … T) |
 | `wr_cmd_row` | IW | Linha r do tile (vira `c_row`) |
-| `wr_done` | 1 | Pulso: todos os B da linha chegaram |
-| `wr_err` | 1 | Nível: algum `BRESP ≠ OKAY` desde o `start` |
+| `wr_done` | 1 | Pulso: todos os B de uma linha chegaram (uma linha por pulso, na ordem dos comandos) |
+| `wr_idle` | 1 | Nível: nenhum comando corrente e fila vazia |
+| `wr_err` | 1 | Nível: algum `BRESP ≠ OKAY` desde o `start` (limpo pelo `dma_ctrl` em `CHECK`) |
 
 ---
 
@@ -335,16 +349,16 @@ Base `0x4000_0000`. Registradores de 32 bits, acessados com `lw`/`sw`. O mapa do
 | Offset | Nome | Acesso | Reset | Campos |
 |---|---|---|---|---|
 | `0x00` | `CTRL` | R/W | 0 | `[0] START` (escrever 1 dispara; lê 0) · `[1] IRQ_EN` · `[2] SOFT_RESET` (escrever 1 aborta com dreno, seção 13; lê 0) |
-| `0x04` | `STATUS` | R / W1C | 0 | `[0] BUSY` (RO) · `[1] DONE` (W1C) · `[2] ERROR` (W1C) · `[7:4] ERR_CODE` (RO; 1 = dimensão zero, 2 = endereço desalinhado, 3 = erro em leitura, **4 = erro em escrita (v2)**) |
-| `0x08` | `ADDR_A` | R/W | 0 | Endereço-base de A (`[1:0]` = 0) |
-| `0x0C` | `ADDR_B` | R/W | 0 | Endereço-base de B |
-| `0x10` | `ADDR_C` | R/W | 0 | Endereço-base de C |
+| `0x04` | `STATUS` | R / W1C | 0 | `[0] BUSY` (RO; = `ctrl_busy`, 9.1) · `[1] DONE` (W1C) · `[2] ERROR` (W1C) · `[7:4] ERR_CODE` (RO; 1 = dimensão zero, 2 = endereço desalinhado, 3 = erro em leitura, **4 = erro em escrita (v2)**) |
+| `0x08` | `ADDR_A` | R/W | 0 | Endereço-base de A. Os 32 bits guardam o valor escrito, inclusive `[1:0]`; o `CHECK` exige `[1:0] = 0` (senão `ERR_CODE = 2`) **(v2)** |
+| `0x0C` | `ADDR_B` | R/W | 0 | Endereço-base de B (mesma regra) |
+| `0x10` | `ADDR_C` | R/W | 0 | Endereço-base de C (mesma regra) |
 | `0x14` | `DIM_M` | R/W | 0 | `[15:0]` M |
 | `0x18` | `DIM_N` | R/W | 0 | `[15:0]` N |
 | `0x1C` | `DIM_K` | R/W | 0 | `[15:0]` K |
 | `0x20` | `CYCLES` | RO | 0 | Ciclos de `START` até `DONE` (zera no `START`) |
 | `0x24` | `INFO` | RO | — | `[7:0] ARRAY_SIZE` · `[15:8]` = 8 (operando) · `[23:16]` = 32 (acumulador) · **`[27:24]` versão = 2 · `[28] PINGPONG` (v2)** |
-| `0x28` | **`CYC_COMPUTE` (v2)** | RO | 0 | Ciclos com `busy = 1` desde o `START`. `CYC_COMPUTE / CYCLES` = taxa de uso da malha |
+| `0x28` | **`CYC_COMPUTE` (v2)** | RO | 0 | Ciclos com `acc_active = 1` (malha calculando, sem contar a espera pelo banco C) desde o `START`. `CYC_COMPUTE / CYCLES` = taxa de uso da malha |
 
 ### 6.1 Regras
 
@@ -353,7 +367,13 @@ Base `0x4000_0000`. Registradores de 32 bits, acessados com `lw`/`sw`. O mapa do
 - **`START`:**
   - Zera `CYCLES`, `CYC_COMPUTE`, `DONE`, `ERROR` e `ERR_CODE`.
   - Gera um pulso de `start` para o `dma_ctrl`.
-  - Sobe `BUSY` no ciclo seguinte.
+  - `BUSY` sobe no ciclo seguinte, quando o `dma_ctrl` entra em `CHECK`, e fica em 1 até o fim do `DONE` (`ctrl_busy`, 9.1). `CYCLES` conta enquanto `ctrl_busy = 1`.
+- **`SOFT_RESET`:**
+  - Com o DMA em `IDLE`, não tem efeito.
+  - Em `CHECK`, volta direto para `IDLE`; nenhuma transação foi emitida.
+  - Em `RUN`, drena (13.2) e volta para `IDLE` sem `DONE`; `STATUS` fica zerado e `CYCLES` congela.
+  - Se o DMA já está em `DRAIN` por erro, é ignorado: o erro vence e termina em `DONE` com `ERROR = 1`.
+- **Escrita simultânea de `START` e `SOFT_RESET`:** vale o `SOFT_RESET`.
 - **Offset não mapeado:** lê 0, escrita ignorada, resposta `OKAY`.
 
 ### 6.2 Comportamento AXI4 do slave
@@ -619,11 +639,13 @@ Calculados uma vez no `dma_ctrl` e mantidos em registradores durante a operaçã
 | `STRIDE_A` | `((K + 3) >> 2) << 2` | 18 |
 | `STRIDE_B` | `((N + 3) >> 2) << 2` | 18 |
 | `STRIDE_C` | `N << 2` | 18 |
-| `last_i0`, `last_j0`, `last_k0` | Maior múltiplo de T menor que M, N, K | 16 |
-| `n_tiles` | `⌈M/T⌉ · ⌈N/T⌉` | 32 |
-| `n_blocks` | `n_tiles · ⌈K/T⌉` | 32 |
+| `last_i0`, `last_j0`, `last_k0` | Maior múltiplo de T menor que M, N, K: `(X − 1) & ~(T − 1)` | 16 |
 
-Os produtos `(i0 + r) · STRIDE` usados nos endereços **não** são feitos com multiplicador. As FSMs mantêm ponteiros de linha que somam o stride a cada linha (seção 10.4).
+**Nenhum valor exige multiplicador:**
+- Os strides são deslocamentos e somas.
+- `last_*` é uma máscara.
+- Os produtos `(i0 + r) · STRIDE` dos endereços viram ponteiros de linha que somam o stride a cada linha (seção 10.4).
+- O fim da operação não usa contagem de tiles ou blocos: o `dma_load` marca o último bloco (`i0 = last_i0 ∧ j0 = last_j0 ∧ k0 = last_k0`) com `last_blk` (7.8); o `dma_compute` termina ao liberar esse banco; o `dma_store` termina no tile `(last_i0, last_j0)`.
 
 ### 8.3 Exemplo numérico: 6×5×7, T = 4
 
@@ -808,9 +830,10 @@ O buffer recebe `buf_row = r`, `buf_word = w`, `buf_bank = bank` e `buf_a_we`/`b
 | Palavras | `nwords = min(T, N − j0s)` |
 | `WSTRB` | `4'b1111` |
 
-O valor de C vem do acelerador com **1 ciclo de latência** (`c_rd` no ciclo n, `c_rdata` no n+1). Para manter um beat por ciclo, o motor usa uma **fila de 2 entradas**:
+O valor de C vem do acelerador com **1 ciclo de latência** (`c_rd` no ciclo n, `c_rdata` no n+1). Para manter um beat por ciclo, o motor usa uma **fila de 2 entradas** (fila de dados de C, distinta da fila de comando da 5.4):
 
-- No ciclo n, emite `c_rd` com `c_row = r` e `c_col = col` se `ocupação + em_voo < 2`; depois `col += 1`.
+- A leitura começa no ciclo em que o comando é carregado (`W_IDLE` ou fim da linha anterior), com `col = 0`. O primeiro dado entra na fila no ciclo seguinte, que já é o primeiro de `W_ADDR`. Por isso `WVALID` sobe um ciclo depois de `AWVALID` (forma de onda da 4.4).
+- No ciclo n, emite `c_rd` com `c_row = r` e `c_col = col` se `ocupação + em_voo < 2` e `col < nwords`; depois `col += 1`.
 - No ciclo n+1, empilha `c_rdata`.
 - `WVALID = fila não vazia`, `WDATA = cabeça da fila`; desempilha a cada beat aceito.
 
@@ -839,7 +862,7 @@ Os produtos `i·STRIDE` são substituídos por somas incrementais:
 |---|---|---|
 | `row_a0` (início da linha i0 de A) | Começo da operação / avanço de i0 | `ADDR_A` / `row_a0 += T·STRIDE_A` (T·STRIDE = `STRIDE << log₂T`) |
 | `ptr_a` | Início do bloco / cada linha | `row_a0 + k0` / `ptr_a += STRIDE_A` |
-| `row_b0` (início da linha k0 de B) | Início do bloco | `ADDR_B` quando k0 = 0; `row_b0 += T·STRIDE_B` quando k0 avança |
+| `row_b0` (início da linha k0 de B) | `L_BLOCK_DONE` | `row_b0 += T·STRIDE_B` quando k0 avança; `ADDR_B` quando k0 volta a 0 (avanço de j0 ou i0) |
 | `ptr_b` | Início das linhas de B / cada linha | `row_b0 + j0` / `ptr_b += STRIDE_B` |
 | `row_c0` (linha i0s de C) | Avanço de i0s | `ADDR_C` / `row_c0 += T·STRIDE_C` |
 | `ptr_c` | Início do tile / cada linha | `row_c0 + 4·j0s` / `ptr_c += STRIDE_C` |
@@ -865,10 +888,11 @@ O caminho crítico fica em um somador de 32 bits, igual para T = 2, 4 e 8.
 | `tile_bank` | DMA→ACC | 1 | Banco usado pelo tile | **Novo** |
 | `first_k` | DMA→ACC | 1 | Zera os acumuladores antes do tile | Igual |
 | `last_k` | DMA→ACC | 1 | No fim do tile, publica C (cópia para o banco C ou `c_valid` com `PINGPONG=0`) | **Novo** |
-| `busy` | ACC→DMA | 1 | Malha ocupada (inclui a espera pelo banco C) | Igual |
+| `busy` | ACC→DMA | 1 | Malha ocupada, de `A_RUN` até sair de `A_WAIT_C` (no DMA: `acc_busy`) | Igual |
+| `acc_active` | ACC→DMA | 1 | 1 só em `A_RUN` (malha calculando). Usado em `CYC_COMPUTE` | **Novo** |
 | `tile_done` | ACC→DMA | 1 | Pulso no fim do tile | Igual |
-| `c_valid` | ACC→DMA | 1 | C completo esperando gravação | **Novo** |
-| `c_release` | DMA→ACC | 1 | Pulso: C gravado | **Novo** |
+| `c_valid` | ACC→DMA | 1 | C completo esperando gravação (registrador) | **Novo** |
+| `c_release` | DMA→ACC | 1 | Pulso de 1 ciclo: C gravado. O acelerador zera `c_valid` na borda que encerra esse ciclo, então o DMA vê `c_valid = 0` já no ciclo seguinte (9.4, H7) | **Novo** |
 | `c_rd`, `c_row`, `c_col` | DMA→ACC | 1, IW, IW | Leitura de C | Igual |
 | `c_rdata` | ACC→DMA | 32 | Valor no ciclo seguinte; vem do banco C (`PINGPONG=1`) ou dos acumuladores (`PINGPONG=0`) | Origem muda |
 
@@ -884,12 +908,13 @@ O caminho crítico fica em um somador de 32 bits, igual para T = 2, 4 e 8.
    - `reg signed [31:0] c_bank [0:T-1][0:T-1]` e `reg c_valid`.
    - Fim de tile com `last_k`:
      - Se `c_valid = 0`: copia os T² acumuladores em paralelo para `c_bank`, sobe `c_valid` e dá `tile_done`.
-     - Se `c_valid = 1`: vai para o estado `S_WAIT_C` com `busy = 1` e copia no primeiro ciclo com `c_valid = 0`.
-   - `c_release` zera `c_valid` no ciclo seguinte.
-5. **`PINGPONG=0`:** no fim de tile com `last_k`, `c_valid` sobe junto com `tile_done`; `c_rdata` lê os acumuladores direto.
-6. **FSM do acelerador:** `S_IDLE` → `S_RUN` (3T − 1 ciclos, como hoje) → `S_WAIT_C` (só com `PINGPONG=1`, `last_k` e `c_valid = 1`) → `S_IDLE`.
+     - Se `c_valid = 1`: vai para o estado `A_WAIT_C` com `busy = 1` (`acc_active = 0`) e copia no primeiro ciclo em que vê `c_valid = 0`. A cópia sobe `c_valid` e dá `tile_done`.
+   - `c_release = 1` num ciclo zera `c_valid` na borda que encerra esse ciclo (`c_valid <= 0`). Não há atraso adicional.
+5. **`PINGPONG=0`:** no fim de tile com `last_k`, `c_valid` sobe junto com `tile_done`; `c_rdata` lê os acumuladores direto. `c_release` zera `c_valid` com a mesma regra do item 4.
+6. **FSM do acelerador:** `A_IDLE` → `A_RUN` (3T − 1 ciclos, como hoje) → `A_WAIT_C` (só com `PINGPONG=1`, `last_k` e `c_valid = 1`) → `A_IDLE`. O prefixo `A_` evita confusão com os estados `S_*` do `dma_store`.
+7. **`acc_active`** = `state == A_RUN`; `busy` = `state ∈ {A_RUN, A_WAIT_C}`.
 
-A latência de um tile continua **3T − 1 ciclos**, mais a eventual espera em `S_WAIT_C`.
+A latência de um tile continua **3T − 1 ciclos**, mais a eventual espera em `A_WAIT_C`.
 
 ### 11.3 Temporização
 
@@ -908,7 +933,8 @@ O testbench [`tb/unit_accel/tb_accel.v`](../tb/unit_accel/tb_accel.v) injeta dad
 
 1. Trocar a tarefa de escrita para palavras de 32 bits com `buf_word`.
 2. Rodar os casos atuais (2×2 com vários blocos k0 e 4×4) com `PINGPONG = 0` e `1`.
-3. Adicionar um caso com dois tiles seguidos, sem `c_release` entre eles, para provar a espera em `S_WAIT_C`.
+3. Adicionar um caso com dois tiles seguidos, sem `c_release` entre eles, para provar a espera em `A_WAIT_C` (`busy = 1`, `acc_active = 0`).
+4. Conferir que `c_valid` cai no ciclo seguinte ao pulso de `c_release`, sem atraso extra.
 
 ---
 
@@ -922,7 +948,7 @@ O testbench [`tb/unit_accel/tb_accel.v`](../tb/unit_accel/tb_accel.v) injeta dad
 |---|---|
 | Masters | M0 = `cpu_axi_adapter`, M1 = DMA |
 | Slaves | S0 = `axi_mem_ctrl` (`addr[31:28] = 0x1`), S1 = `dma_regs` (`0x4`), slave padrão interno (demais) |
-| Decodificação | Combinacional sobre `AxADDR[31:28]` |
+| Decodificação | Combinacional sobre `AxADDR[31:28]` só. Consequências, aceitas para manter o xbar simples:<br>• toda a faixa `0x1xxx_xxxx` vai para S0, e o `axi_mem_ctrl` responde `SLVERR` fora dos 64 KiB da DMEM (12.2);<br>• toda a faixa `0x4xxx_xxxx` vai para S1, e o `dma_regs` usa só `addr[11:2]`, então os registradores se repetem a cada 4 KiB (aliasing) e offsets não mapeados leem 0;<br>• só os demais valores de `addr[31:28]` recebem `DECERR` |
 | Arbitragem | Por slave, **um árbitro de leitura e um de escrita independentes**, round-robin entre M0 e M1. A grant é registrada (1 ciclo de arbitragem) |
 | Travamento | Leitura: a grant de um slave fica com o master até o handshake do beat com `RLAST`. Escrita: até o handshake de B |
 | Rota de W | AXI4 não tem WID. Cada master tem no máximo uma escrita em andamento, então o W do master m vai para `wr_target[m]`, gravado no handshake de AW. Antes desse handshake, `WREADY` = 0 para o master (permitido: o master não pode esperar `WREADY` para dar `AWVALID`) |
