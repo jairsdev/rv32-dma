@@ -3,6 +3,8 @@
 Implementação em Verilog de um processador RISC-V RV32I com coprocessador de multiplicação matricial e controlador DMA baseado em systolic array, desenvolvido no Programa CI Digital da CEPEDI.
 
 > **Status:** ✅ Entregas 1 e 2 concluídas (próxima etapa: Entrega 3 — DMA e Memória Compartilhada)
+>
+> **Especificação do DMA:** a microarquitetura completa do DMA com AXI4 burst e prefetch (ping-pong) está no MAS [`docs/dma_mas.md`](docs/dma_mas.md). Onde este README e o MAS divergirem, vale o MAS.
 
 ## Equipe
 
@@ -19,9 +21,9 @@ Implementação em Verilog de um processador RISC-V RV32I com coprocessador de m
 O sistema calcula **C = A × B**. A CPU apenas configura os endereços e dimensões das matrizes e dispara a operação; o DMA move os dados e alimenta o systolic array sem intervenção da CPU. O fim da operação é sinalizado por registrador de status e por interrupção, que acorda a CPU de um `wfi`.
 
 - Processador RISC-V RV32I multiciclo em RTL, com portas de instrução e de dados separadas
-- Barramento AMBA AXI4-Lite (32 bits) com crossbar 2×2 entre CPU, DMA, memória de dados e registradores
+- Barramento AMBA AXI4 (32 bits, bursts INCR) com crossbar 2×2 entre CPU, DMA, memória de dados e registradores
 - Interface de controle mapeada em memória (registradores do DMA em `0x4000_0000`)
-- Controlador DMA com FSM própria (leitura de A/B em tiles, escrita de C)
+- Controlador DMA com FSMs próprias (carga de A/B em tiles, cálculo, escrita de C) e prefetch com bancos ping-pong (parâmetro `PINGPONG`)
 - Systolic array output-stationary de MACs parametrizável (`ARRAY_SIZE`), com tiling para matrizes maiores que a malha
 - Memória de dados compartilhada entre CPU e DMA/acelerador
 
@@ -29,7 +31,7 @@ O sistema calcula **C = A × B**. A CPU apenas configura os endereços e dimens�
 
 ```
 .
-├── docs/          # Especificação, diagramas, mapa de memória
+├── docs/          # Especificação, MAS do DMA (dma_mas.md), diagramas, mapa de memória
 │   ├── spec/      # Enunciado do projeto e especificações AXI / RISC-V
 │   └── img/       # Diagramas (.drawio + .svg) e figuras de decisões
 ├── rtl/
@@ -91,9 +93,9 @@ A topologia segue a ideia do diagrama de referência ARM CoreLink NIC-400 (maste
 
 | Figura NIC-400 | Nosso bloco |
 |----------------|-------------|
-| Cortex-A (AXI4) ×2 | CPU RV32I: a Porta D é master AXI4-Lite (M0); a Porta I busca na IMEM local, fora do barramento |
-| L2C-310 ×2 | `cpu_axi_adapter` ×1 (Porta D: valid/ready → AXI4-Lite) |
-| DMA | DMA Controller: master AXI4-Lite (M1) + bloco de registradores (slave S1) |
+| Cortex-A (AXI4) ×2 | CPU RV32I: a Porta D é master AXI4 (M0); a Porta I busca na IMEM local, fora do barramento |
+| L2C-310 ×2 | `cpu_axi_adapter` ×1 (Porta D: valid/ready → AXI4 single-beat) |
+| DMA | DMA Controller: master AXI4 com burst (M1) + bloco de registradores (slave S1) |
 | Core Link NIC-400 switch | `axi_xbar` 2 masters × 2 slaves |
 | NIC-400 switch secundário | — (removido: o acelerador não fica no barramento) |
 | Mali GPU / Interface block / Video | Acelerador MatMul (só sideband com o DMA) |
@@ -106,11 +108,11 @@ A topologia segue a ideia do diagrama de referência ARM CoreLink NIC-400 (maste
 |-------|--------|
 | CPU RV32I | Core multiciclo (FETCH → DECODE → EXEC → MEM → WB, + WAIT para `wfi`). A Porta I busca instruções na IMEM local; a Porta D faz load/store pelo barramento. Só configura e dispara o DMA. |
 | Memória de instruções | SRAM de 64 KiB em `0x0000_0000`, lida só pela Porta I, carregada por `$readmemh`. |
-| `cpu_axi_adapter` | Converte a Porta D (valid/ready) em master AXI4-Lite: leitura → AR/R, escrita → AW/W/B. `WSTRB` vem de `d_wstrb`. |
+| `cpu_axi_adapter` | Converte a Porta D (valid/ready) em master AXI4 de 1 beat: leitura → AR/R, escrita → AW/W/B. `WSTRB` vem de `d_wstrb`. |
 | `axi_xbar` | 2 masters × 2 slaves. Decodifica `addr[31:28]` (`0x1` → S0, `0x4` → S1, demais → DECERR), arbitra cada slave em round-robin e liga o caminho até a resposta (1 transação por master). |
-| `axi_mem_ctrl` | Slave AXI4-Lite que acessa a SRAM síncrona, respeitando `WSTRB`. |
+| `axi_mem_ctrl` | Slave AXI4 com bursts INCR que acessa a SRAM síncrona, respeitando `WSTRB`. |
 | Memória de dados compartilhada | SRAM de 64 KiB em `0x1000_0000` com dados do firmware, matrizes A, B, C e pilha; acessada pela CPU e pelo DMA. |
-| DMA | Master AXI4-Lite (M1) com FSM própria de tiling + bloco de registradores (slave S1). Lê A/B, preenche os buffers, dispara o tile, lê C e a escreve na DMEM; sinaliza `DONE` e `irq`. |
+| DMA | Master AXI4 (M1) + bloco de registradores (slave S1). FSMs concorrentes de carga, cálculo e gravação: lê A/B em bursts, preenche um banco enquanto a malha usa o outro, grava C do banco de saída; sinaliza `DONE` e `irq` (MAS §5–§9). |
 | Acelerador | buf A e buf B (T×T int8), registradores de skew e malha T×T de PEs output-stationary; os acumuladores int32 servem de banco C. Controlado só pelo DMA, via sideband. |
 
 ## 2. Decisões de microarquitetura
@@ -119,14 +121,14 @@ A topologia segue a ideia do diagrama de referência ARM CoreLink NIC-400 (maste
 |------|---------|--------------------------|---------------|
 | Microarquitetura da CPU | Multiciclo: FSM FETCH → DECODE → EXEC → MEM → WB (+ WAIT) | Single-cycle (RTL inicial); PicoRV32 | Uma interface valid/ready com latência variável encaixa naturalmente numa FSM (cada estado espera seu `ready`); a single-cycle precisaria de stall em todo acesso; o PicoRV32 é core de terceiros e o enunciado pede a CPU em RTL |
 | Portas da CPU | Duas portas valid/ready: I (fetch) direto na IMEM local; D (load/store) no barramento | Porta I também no xbar (3 masters × 3 slaves) | Fetch sem arbitragem e sem latência AXI (CPI ~4–5); a CPU nunca disputa a DMEM com o DMA para buscar instrução; a mesma interface nas duas portas permite levar a I para o AXI depois |
-| Barramento | AMBA AXI4-Lite, 32 bits, single-beat (sem ID/burst), 1 transação em andamento por master | Handshake valid/ready simples; NIC-400 completo (xbar 3×3 + switch secundário) | AXI4-Lite é o padrão do projeto; o DMA vira um master real disputando a DMEM com a CPU; o switch secundário só existia para registradores do acelerador, que não são necessários |
+| Barramento | AMBA AXI4, 32 bits, bursts INCR de até 16 beats, 1 leitura + 1 escrita em andamento por master (MAS §4) | AXI4-Lite single-beat (versão da Entrega 1); handshake valid/ready simples; NIC-400 completo | Um burst por linha de tile reduz o custo por palavra; leitura e escrita simultâneas permitem o prefetch; o DMA continua um master real disputando a DMEM com a CPU |
 | Interconexão | `axi_xbar` 2×2: M0 = CPU-D, M1 = DMA; S0 = DMEM, S1 = registradores; round-robin por slave; DECERR fora do mapa | — | Menor crossbar que atende o sistema: menos árbitros e decodificadores para verificar |
 | Controle do acelerador | Só pelo DMA, via sideband; a CPU vê um único bloco de registradores (no DMA) | Registradores próprios do acelerador no barramento | No fluxo exigido a CPU nunca fala direto com o acelerador; elimina um slave AXI |
 | Largura dos operandos | int8 com sinal (−128 … 127), 4 por palavra | int16; int8 com 1 elemento por palavra | MAC 8×8 ocupa ~¼ da área de um 16×16 → mais PEs pela mesma área; empacotar 4 por palavra reduz em 4× as transações AXI de A e B |
 | Largura do acumulador | int32 com sinal | 16/20/24 bits; 40 bits | Precisa de 2W + ⌈log₂ K⌉ bits: 32 bits cobre K ≤ 65536 sem overflow (§2.1); C cabe em uma palavra do barramento |
 | `ARRAY_SIZE` (T) | 2, 4 e 8 (parâmetro de elaboração) | — | Três configurações exigidas na síntese; só o acelerador e as larguras de índice do sideband dependem de T |
 | Fluxo de dados do array | Output-stationary: C fica no acumulador de cada PE; A flui → e B flui ↓, com skew | Weight-stationary | Acumula todos os blocos de K dentro do PE (tiling em K sem somar parciais fora da malha); controle mais simples (§2.2) |
-| Estratégia de tiling | Tiles T×T×T; laço i0 → j0 → k0 (k0 por dentro); buffers A/B de T×T; `first_k` zera os acumuladores; zero-padding nas bordas | Ping-pong (double buffering); painéis T×K_MAX | Buffers mínimos que escalam com T; K arbitrário; dimensões não múltiplas de T (ex.: 6×5×7) sem lógica especial |
+| Estratégia de tiling | Tiles T×T×T; laço i0 → j0 → k0 (k0 por dentro); `first_k` zera os acumuladores; zero-padding nas bordas; **prefetch com 2 bancos de A/B + banco C** (`PINGPONG = 1`, MAS §7) | Painéis T×K_MAX; só um banco | Ordem de tiles igual ao golden model; K arbitrário; dimensões não múltiplas de T sem lógica especial; o ping-pong esconde cálculo e gravação atrás da carga (~35 % menos ciclos estimados) e é medido contra `PINGPONG = 0` |
 | Sinalização de término | `STATUS.DONE` (W1C) + `irq = DONE ∧ IRQ_EN`; o firmware usa `wfi` | Polling puro; trap completo (Zicsr: `mtvec`, `mepc`, `mret`) | Usa a interrupção de fato com um estado a mais na FSM da CPU e sem CSRs; polling continua possível com `IRQ_EN = 0` |
 
 ### 2.1 Largura dos dados
@@ -180,7 +182,7 @@ Base `0x4000_0000`. Todos os registradores têm 32 bits e são acessados com `lw
 | Offset | Nome | Acesso | Reset | Campos |
 |--------|------|--------|-------|--------|
 | `0x00` | `CTRL` | R/W | `0` | `[0] START` (escrever 1 dispara; lê 0) · `[1] IRQ_EN` · `[2] SOFT_RESET` (escrever 1 leva o DMA a IDLE e limpa `STATUS`; lê 0) |
-| `0x04` | `STATUS` | R / W1C | `0` | `[0] BUSY` (RO) · `[1] DONE` (W1C) · `[2] ERROR` (W1C) · `[7:4] ERR_CODE` (RO: 1 = dimensão zero, 2 = endereço desalinhado, 3 = resposta `SLVERR`/`DECERR`) |
+| `0x04` | `STATUS` | R / W1C | `0` | `[0] BUSY` (RO) · `[1] DONE` (W1C) · `[2] ERROR` (W1C) · `[7:4] ERR_CODE` (RO: 1 = dimensão zero, 2 = endereço desalinhado, 3 = erro em leitura, 4 = erro em escrita) |
 | `0x08` | `ADDR_A` | R/W | `0` | Endereço-base de A (`[1:0]` = 0) |
 | `0x0C` | `ADDR_B` | R/W | `0` | Endereço-base de B (`[1:0]` = 0) |
 | `0x10` | `ADDR_C` | R/W | `0` | Endereço-base de C (`[1:0]` = 0) |
@@ -188,7 +190,8 @@ Base `0x4000_0000`. Todos os registradores têm 32 bits e são acessados com `lw
 | `0x18` | `DIM_N` | R/W | `0` | `[15:0]` N: colunas de B e de C |
 | `0x1C` | `DIM_K` | R/W | `0` | `[15:0]` K: colunas de A e linhas de B |
 | `0x20` | `CYCLES` | RO | `0` | Ciclos de clock de `START` até `DONE` (zera no `START`); usado na comparação entre configurações |
-| `0x24` | `INFO` | RO | — | `[7:0] ARRAY_SIZE` · `[15:8]` largura do operando (8) · `[23:16]` largura do acumulador (32) · `[31:24]` versão |
+| `0x24` | `INFO` | RO | — | `[7:0] ARRAY_SIZE` · `[15:8]` largura do operando (8) · `[23:16]` largura do acumulador (32) · `[27:24]` versão (2) · `[28] PINGPONG` |
+| `0x28` | `CYC_COMPUTE` | RO | `0` | Ciclos com a malha ocupada desde o `START` (uso da malha = `CYC_COMPUTE / CYCLES`) |
 
 Regras:
 
@@ -246,51 +249,21 @@ Mesma convenção nas duas portas, no estilo do PicoRV32: a CPU sobe `valid` com
 
 Outras entradas da CPU: `clk`, `rst_n` e `irq` (§4.4). Erros de barramento (`SLVERR`/`DECERR`) não geram trap: a leitura retorna 0 e a escrita é descartada.
 
-### 4.2 AXI4-Lite (xbar, adapter, DMA, controlador de memória)
+### 4.2 AXI4 (xbar, adapter, DMA, controlador de memória)
 
-Interfaces: **M0** (`cpu_axi_adapter` → xbar), **M1** (DMA → xbar), **S0** (xbar → `axi_mem_ctrl`), **S1** (xbar → registradores do DMA). Direções do ponto de vista do master.
+O perfil AXI4 do projeto (sinais, valores fixos, regras de handshake, bursts INCR até 16 beats, regra dos 4 KB, IDs e respostas de erro) está no **MAS §4** ([`docs/dma_mas.md`](docs/dma_mas.md)). Resumo:
 
-| Canal | Sinal | Dir. | Largura | Descrição |
-|-------|-------|------|---------|-----------|
-| Global | `ACLK`, `ARESETn` | in | 1 | Clock e reset ativo em 0 |
-| AW | `AWADDR` | out | 32 | Endereço de escrita |
-| AW | `AWPROT` | out | 3 | Fixo `3'b000` |
-| AW | `AWVALID` / `AWREADY` | out / in | 1 | Handshake do endereço |
-| W | `WDATA` | out | 32 | Dado de escrita |
-| W | `WSTRB` | out | 4 | Byte enables |
-| W | `WVALID` / `WREADY` | out / in | 1 | Handshake do dado |
-| B | `BRESP` | in | 2 | `OKAY` = 00, `SLVERR` = 10, `DECERR` = 11 |
-| B | `BVALID` / `BREADY` | in / out | 1 | Handshake da resposta |
-| AR | `ARADDR` | out | 32 | Endereço de leitura |
-| AR | `ARPROT` | out | 3 | Fixo `3'b000` |
-| AR | `ARVALID` / `ARREADY` | out / in | 1 | Handshake do endereço |
-| R | `RDATA` | in | 32 | Dado lido |
-| R | `RRESP` | in | 2 | Como `BRESP` |
-| R | `RVALID` / `RREADY` | in / out | 1 | Handshake do dado |
-
-Regras adotadas:
-
-- Um `VALID` nunca depende do `READY` correspondente e, uma vez em 1, fica estável até o handshake.
-- Cada master tem no máximo **uma transação em andamento** (leitura ou escrita). AW e W são emitidos juntos e podem ser aceitos em ciclos diferentes.
-- O xbar arbitra cada slave em round-robin e mantém o caminho master ↔ slave até R ou B. Endereços fora do mapa recebem `DECERR` de um slave padrão interno.
+- Interfaces **M0** (`cpu_axi_adapter` → xbar), **M1** (DMA → xbar), **S0** (xbar → `axi_mem_ctrl`), **S1** (xbar → registradores do DMA).
+- `AxBURST = INCR`, `AxSIZE = 4 bytes`, `AxLEN ≤ 15`; nenhum burst cruza 4 KB.
+- Cada master tem no máximo 1 leitura e 1 escrita em andamento; ID fixo 0 no master, `{m_idx, ID}` no lado slave.
+- A CPU usa só transações de 1 beat; o DMA usa 1 burst por linha de tile.
+- A microarquitetura do xbar, do controlador de memória e do adapter está no MAS §12.
 
 ### 4.3 DMA ↔ acelerador (sideband, não-AXI)
 
-| Sinal | Dir. | Largura | Descrição | Papel no enunciado |
-|-------|------|---------|-----------|--------------------|
-| `buf_a_we` | DMA→ACC | 1 | Escreve `buf_wdata` em buf A[`buf_row`][`buf_col`] | Transferência de A |
-| `buf_b_we` | DMA→ACC | 1 | Escreve `buf_wdata` em buf B[`buf_row`][`buf_col`] | Transferência de B |
-| `buf_row`, `buf_col` | DMA→ACC | IW | Posição no buffer | |
-| `buf_wdata` | DMA→ACC | 8 | Elemento int8 (0 fora da matriz = zero-padding) | |
-| `tile_start` | DMA→ACC | 1 | Pulso: inicia o processamento do tile com os buffers atuais | **Requisição** |
-| `first_k` | DMA→ACC | 1 | Amostrado com `tile_start`: 1 = zera os acumuladores antes (primeiro bloco k0) | |
-| `busy` | ACC→DMA | 1 | 1 enquanto a malha processa | **Pronto/ocupado** |
-| `tile_done` | ACC→DMA | 1 | Pulso ao fim do processamento (acumuladores estáveis) | **Conclusão** |
-| `c_rd` | DMA→ACC | 1 | Lê o acumulador (`c_row`, `c_col`) | Transferência de C |
-| `c_row`, `c_col` | DMA→ACC | IW | Posição do elemento de C no tile | |
-| `c_rdata` | ACC→DMA | 32 | Valor int32, válido no ciclo seguinte a `c_rd` | |
+A interface foi revista para o prefetch (MAS §11): a porta de escrita dos buffers passou a 32 bits (`buf_word`, `buf_wdata[31:0]`), e entraram `buf_bank`, `tile_bank`, `last_k`, `c_valid` e `c_release`. Os papéis do enunciado continuam: **requisição** = `tile_start`, **pronto/ocupado** = `busy`, **conclusão** = `tile_done` (e `c_valid` para o resultado de C).
 
-Regras: o DMA só escreve nos buffers e lê C com `busy = 0`; o acelerador ignora `tile_start` com `busy = 1`.
+> O RTL atual de [`rtl/accel/accel.v`](rtl/accel/accel.v) (Entrega 2) ainda usa a interface antiga, de 8 bits e sem bancos. A migração é o passo 3 do plano de construção do MAS (§17).
 
 ### 4.4 Interrupção
 
@@ -302,7 +275,7 @@ Regras: o DMA só escreve nos buffers e lê C com `busy = 0`; o acelerador ignor
 
 ![Acelerador output-stationary](docs/img/accel.svg)
 
-Fonte editável: [`docs/img/accel.drawio`](docs/img/accel.drawio).
+Fonte editável: [`docs/img/accel.drawio`](docs/img/accel.drawio). A figura já mostra a versão com bancos ping-pong e banco C (MAS §11); o texto abaixo descreve o RTL da Entrega 2.
 
 - **Buffers:** buf A e buf B guardam T×T elementos int8 cada, escritos pelo DMA pelo sideband (§4.3).
 - **Streaming:** no passo t (0 … T−1), a linha i da malha recebe A[i][t] atrasado i ciclos e a coluna j recebe B[t][j] atrasado j ciclos (registradores de skew). Fora da janela entram zeros, que não alteram os acumuladores.
@@ -319,43 +292,21 @@ iverilog -g2012 -o sim_accel.vvp tb/unit_accel/tb_accel.v rtl/accel/pe.v rtl/acc
 vvp sim_accel.vvp
 ```
 
-## 6. Máquina de estados do DMA
+## 6. Máquinas de estado do DMA
 
-![FSM do DMA](docs/img/dma_fsm.svg)
+O DMA tem uma FSM de controle e três FSMs concorrentes (carga, cálculo e gravação), mais os motores AXI de leitura e escrita. Tudo está especificado no **MAS §9** ([`docs/dma_mas.md`](docs/dma_mas.md)), com tabelas de estados, transições e saídas.
 
-Fonte editável: [`docs/img/dma_fsm.drawio`](docs/img/dma_fsm.drawio).
+![Blocos do DMA](docs/img/dma_blocks.svg)
 
-```mermaid
-stateDiagram-v2
-    [*] --> IDLE
-    IDLE --> CHECK: CTRL.START
-    CHECK --> ERROR: config inválida
-    CHECK --> LOAD_A: ok, i0 = j0 = k0 = 0
-    LOAD_A --> LOAD_B: buf A cheio
-    LOAD_B --> COMPUTE: buf B cheio
-    COMPUTE --> LOAD_A: tile_done, falta bloco k0 (k0 += T)
-    COMPUTE --> STORE_C: tile_done, último bloco k0
-    STORE_C --> LOAD_A: falta tile (avança j0 ou i0, k0 = 0)
-    STORE_C --> DONE: último tile
-    LOAD_A --> ERROR: RESP com erro
-    LOAD_B --> ERROR: RESP com erro
-    STORE_C --> ERROR: RESP com erro
-    ERROR --> DONE
-    DONE --> IDLE
-```
+| FSM | Diagrama | Função |
+|---|---|---|
+| `dma_ctrl` | [`dma_ctrl_fsm.svg`](docs/img/dma_ctrl_fsm.svg) | IDLE → CHECK → RUN → DRAIN → ERROR/DONE |
+| `dma_load` | [`dma_load_fsm.svg`](docs/img/dma_load_fsm.svg) | Carrega cada bloco (T linhas de A + T de B) num banco livre |
+| `dma_compute` | [`dma_compute_fsm.svg`](docs/img/dma_compute_fsm.svg) | Dispara cada tile com o banco cheio |
+| `dma_store` | [`dma_store_fsm.svg`](docs/img/dma_store_fsm.svg) | Grava as linhas válidas de C e libera o banco C |
+| `dma_rd_engine` / `dma_wr_engine` | [`axi_rd_wr_fsm.svg`](docs/img/axi_rd_wr_fsm.svg) | Bursts AR/R e AW/W/B, divisão em 4 KB, padding |
 
-| Estado | O que faz | Próximo estado |
-|--------|-----------|----------------|
-| `IDLE` | `BUSY = 0`; espera `CTRL.START` | `CHECK` |
-| `CHECK` | Valida `DIM_* ≥ 1` e `ADDR_*` alinhados; calcula `STRIDE_A/B/C`; zera i0, j0, k0 e `CYCLES` | `LOAD_A` · `ERROR` |
-| `LOAD_A` | Para r = 0 … T−1: lê as ⌈T/4⌉ palavras de A[i0+r][k0 … k0+T−1], extrai os bytes e escreve em buf A[r][c]. Escreve 0 sem ler a memória quando i0+r ≥ M ou k0+c ≥ K | `LOAD_B` · `ERROR` |
-| `LOAD_B` | Igual para B[k0+r][j0 … j0+T−1] → buf B; 0 quando k0+r ≥ K ou j0+c ≥ N | `COMPUTE` · `ERROR` |
-| `COMPUTE` | Pulso de `tile_start` com `first_k = (k0 == 0)`; espera `tile_done` | `LOAD_A` (k0 += T, se k0 + T < K) · `STORE_C` |
-| `STORE_C` | Para cada (r, c) com i0+r < M e j0+c < N: `c_rd` e escrita de C[i0+r][j0+c] (AW + W, espera B). Fora disso não escreve (máscara de borda) | `LOAD_A` (próximo tile: j0 += T; se j0 ≥ N, j0 = 0 e i0 += T; k0 = 0) · `DONE` (i0 ≥ M) · `ERROR` |
-| `ERROR` | `STATUS.ERROR = 1`, grava `ERR_CODE` | `DONE` |
-| `DONE` | `STATUS.DONE = 1`, `BUSY = 0`, congela `CYCLES`; `irq` sobe se `IRQ_EN = 1` | `IDLE` |
-
-`LOAD_A`, `LOAD_B` e `STORE_C` usam a sub-FSM do master AXI4-Lite. Leitura: `RD_ADDR` (`ARVALID`) → `RD_DATA` (`RREADY`) → próxima palavra. Escrita: `WR_REQ` (`AWVALID` e `WVALID`) → `WR_RESP` (`BREADY`) → próxima palavra.
+Com `PINGPONG = 0`, as mesmas FSMs se alternam (carga → cálculo → gravação), como na versão da Entrega 1.
 
 ## 7. Sequência de uma operação completa
 
@@ -376,18 +327,21 @@ sequenceDiagram
     Note over CPU: wfi (FSM em WAIT)
     loop cada tile (i0, j0)
         loop cada bloco k0
-            DMA->>DMEM: AR (linhas de A e B)
-            DMEM-->>DMA: R (4 x int8 por palavra)
-            DMA->>ACC: buf_a_we / buf_b_we
-            DMA->>ACC: tile_start (first_k)
+            DMA->>DMEM: AR burst (1 por linha de A e de B)
+            DMEM-->>DMA: R (4 x int8 por beat)
+            DMA->>ACC: buf_a_we / buf_b_we (bank, row, word, data[32])
+            DMA->>ACC: tile_start (tile_bank, first_k, last_k)
             Note over ACC: 3T-1 ciclos
             ACC->>DMA: tile_done
         end
+        ACC->>DMA: c_valid
         DMA->>ACC: c_rd (c_row, c_col)
         ACC-->>DMA: c_rdata
-        DMA->>DMEM: AW + W (C, int32)
+        DMA->>DMEM: AW + W burst (1 por linha de C, int32)
         DMEM-->>DMA: B (OKAY)
+        DMA->>ACC: c_release
     end
+    Note over DMA,ACC: com PINGPONG = 1, a carga do próximo bloco ocorre durante o cálculo e a gravação de C (MAS §7)
     DMA->>CPU: irq (DONE e IRQ_EN)
     CPU->>REGS: lw STATUS (DONE = 1)
     CPU->>REGS: sw STATUS = DONE (W1C), irq cai
@@ -485,8 +439,8 @@ python model/golden.py --test-all
   - estado WAIT para o `wfi`;
   - LB/LH/LBU/LHU/SB/SH, via `d_wstrb`.
 - **Síntese:** memórias de 64 KiB em flip-flops dominariam a área e esconderiam a diferença entre as configurações. Proposta: sintetizar o acelerador (e o DMA) para T = 2, 4 e 8, com as SRAMs como modelos comportamentais fora da síntese. A ferramenta de síntese ainda não foi definida.
-- **AXI4-Lite:** violações de handshake (`VALID` dependente de `READY`, `VALID` caindo antes do handshake) travam o xbar. Mitigação: assertions nos testbenches unitários.
-- **Desempenho:** com AXI4-Lite single-beat e uma transação por vez, o DMA domina a latência. A comparação de ciclos entre as configurações deve mostrar isso. Buffers ping-pong ficam como melhoria futura.
+- **AXI4:** violações de handshake (`VALID` dependente de `READY`, `VALID` caindo antes do handshake) travam o xbar. Mitigação: assertions nos testbenches unitários.
+- **Desempenho:** mesmo com bursts, a carga de A/B domina a latência (banda de 32 bits). O prefetch com ping-pong esconde cálculo e gravação atrás da carga; o ganho é medido comparando `PINGPONG = 0` e `1` (MAS §7 e §14).
 - **Firmware:** a Porta D não enxerga a IMEM. Por isso `.rodata` e `.data` precisam ser ligados na DMEM (linker script) e pré-carregados por `$readmemh`.
 - **Dúvidas para o professor:**
   - O `wfi` acordado pelo `irq` atende o "preferencialmente interrupção"?
@@ -504,6 +458,7 @@ python model/golden.py --test-all
 ## Referências
 
 - [Enunciado do projeto](docs/spec/enunciado.pdf)
+- MAS do controlador DMA: [`docs/dma_mas.md`](docs/dma_mas.md)
 - The RISC-V Instruction Set Manual, Volume I: Unprivileged ISA ([`docs/spec/riscv-unprivileged.pdf`](docs/spec/riscv-unprivileged.pdf))
 - AMBA AXI and ACE Protocol Specification, Arm IHI 0022E ([`docs/spec/IHI0022E_amba_axi_and_ace_protocol_spec_4.pdf`](docs/spec/IHI0022E_amba_axi_and_ace_protocol_spec_4.pdf)) e Introduction to AMBA AXI4, Arm 102202 ([`docs/spec/102202_0100_01_Introduction_to_AMBA_AXI.pdf`](docs/spec/102202_0100_01_Introduction_to_AMBA_AXI.pdf))
 - [Guia didático AMBA AXI4](docs/spec/Guia_AMBA_AXI4.docx)
