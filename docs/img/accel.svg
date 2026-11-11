@@ -11,11 +11,11 @@
   <rect x="0" y="0" fill="#FFFFFF" width="1100" height="670" />
   <rect x="20" y="10" width="1060" height="640" fill="#E6ECEC" stroke="none" stroke-width="1" />
   <text x="28.0" y="24.7" text-anchor="start" fill="#4A5555" font-style="italic">
-    <tspan font-size="11" font-weight="normal">Acelerador MatMul — exemplo com T = ARRAY_SIZE = 4 · output-stationary</tspan>
+    <tspan font-size="11" font-weight="normal">Acelerador MatMul — exemplo com T = ARRAY_SIZE = 4 · output-stationary · PINGPONG = 1</tspan>
   </text>
   <rect x="315" y="185" width="370" height="300" fill="#D5E3E6" stroke="none" stroke-width="1" />
   <text x="323.0" y="478.0" text-anchor="start" fill="#4A5555" font-style="italic">
-    <tspan font-size="11" font-weight="normal">malha T×T de PEs · acc int32 em cada PE = banco C</tspan>
+    <tspan font-size="11" font-weight="normal">malha T×T de PEs · acc int32 em cada PE (copiado para o banco C)</tspan>
   </text>
   <rect x="40" y="40" width="200" height="100" fill="#808285" stroke="#5A5C5E" stroke-width="1" rx="10.0" ry="10.0" />
   <text x="140.0" y="79.2" text-anchor="middle" fill="#FFFFFF">
@@ -25,22 +25,25 @@
     <tspan font-size="11" font-weight="normal">escrita dos buffers</tspan>
   </text>
   <text x="140.0" y="109.2" text-anchor="middle" fill="#FFFFFF">
-    <tspan font-size="11" font-weight="normal">(sideband)</tspan>
+    <tspan font-size="11" font-weight="normal">1 palavra (4 int8)/ciclo</tspan>
   </text>
   <rect x="330" y="40" width="340" height="50" fill="#808285" stroke="#5A5C5E" stroke-width="1" rx="7.5" ry="7.5" />
   <text x="500.0" y="61.7" text-anchor="middle" fill="#FFFFFF">
-    <tspan font-size="12" font-weight="bold">buf B (T×T int8)</tspan>
+    <tspan font-size="12" font-weight="bold">buf B × 2 bancos (T×T int8)</tspan>
   </text>
   <text x="500.0" y="76.7" text-anchor="middle" fill="#FFFFFF">
-    <tspan font-size="11" font-weight="normal">leitura: linha k → T elementos</tspan>
+    <tspan font-size="11" font-weight="normal">leitura: banco tile_bank, linha k</tspan>
   </text>
   <rect x="330" y="120" width="340" height="40" fill="#1CC0DD" stroke="#119BB3" stroke-width="1" rx="6.0" ry="6.0" />
   <text x="500.0" y="143.8" text-anchor="middle" fill="#FFFFFF">
     <tspan font-size="11" font-weight="bold">skew B: coluna j atrasada j ciclos</tspan>
   </text>
   <rect x="40" y="210" width="120" height="250" fill="#808285" stroke="#5A5C5E" stroke-width="1" rx="10.0" ry="10.0" />
-  <text x="100.0" y="301.7" text-anchor="middle" fill="#FFFFFF">
+  <text x="100.0" y="286.7" text-anchor="middle" fill="#FFFFFF">
     <tspan font-size="12" font-weight="bold">buf A</tspan>
+  </text>
+  <text x="100.0" y="301.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">× 2 bancos</tspan>
   </text>
   <text x="100.0" y="316.7" text-anchor="middle" fill="#FFFFFF">
     <tspan font-size="11" font-weight="normal">T×T int8</tspan>
@@ -49,10 +52,13 @@
     <tspan font-size="11" font-weight="normal">leitura:</tspan>
   </text>
   <text x="100.0" y="361.7" text-anchor="middle" fill="#FFFFFF">
-    <tspan font-size="11" font-weight="normal">coluna k →</tspan>
+    <tspan font-size="11" font-weight="normal">banco</tspan>
   </text>
   <text x="100.0" y="376.7" text-anchor="middle" fill="#FFFFFF">
-    <tspan font-size="11" font-weight="normal">T elementos</tspan>
+    <tspan font-size="11" font-weight="normal">tile_bank,</tspan>
+  </text>
+  <text x="100.0" y="391.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">coluna k</tspan>
   </text>
   <rect x="180" y="210" width="100" height="250" fill="#1CC0DD" stroke="#119BB3" stroke-width="1" rx="10.0" ry="10.0" />
   <text x="230.0" y="316.7" text-anchor="middle" fill="#FFFFFF">
@@ -168,27 +174,39 @@
   <polyline points="580,432 600,432" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
   <polyline points="635,390 635,410" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
   <rect x="740" y="210" width="150" height="250" fill="#1CC0DD" stroke="#119BB3" stroke-width="1" rx="10.0" ry="10.0" />
-  <text x="815.0" y="316.7" text-anchor="middle" fill="#FFFFFF">
-    <tspan font-size="12" font-weight="bold">mux C</tspan>
+  <text x="815.0" y="294.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">banco C</tspan>
   </text>
-  <text x="815.0" y="331.7" text-anchor="middle" fill="#FFFFFF">
-    <tspan font-size="11" font-weight="normal">T² acumuladores</tspan>
+  <text x="815.0" y="309.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">T×T int32</tspan>
   </text>
-  <text x="815.0" y="346.7" text-anchor="middle" fill="#FFFFFF">
-    <tspan font-size="11" font-weight="normal">int32, escolhidos</tspan>
+  <text x="815.0" y="324.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">cópia dos acc</tspan>
   </text>
-  <text x="815.0" y="361.7" text-anchor="middle" fill="#FFFFFF">
+  <text x="815.0" y="339.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">em 1 ciclo (last_k)</tspan>
+  </text>
+  <text x="815.0" y="369.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">+ mux T²:1</tspan>
+  </text>
+  <text x="815.0" y="384.2" text-anchor="middle" fill="#FFFFFF">
     <tspan font-size="11" font-weight="normal">por (c_row, c_col)</tspan>
   </text>
   <rect x="920" y="280" width="150" height="110" fill="#808285" stroke="#5A5C5E" stroke-width="1" rx="10.0" ry="10.0" />
-  <text x="995.0" y="324.2" text-anchor="middle" fill="#FFFFFF">
+  <text x="995.0" y="309.2" text-anchor="middle" fill="#FFFFFF">
     <tspan font-size="12" font-weight="bold">DMA</tspan>
   </text>
-  <text x="995.0" y="339.2" text-anchor="middle" fill="#FFFFFF">
+  <text x="995.0" y="324.2" text-anchor="middle" fill="#FFFFFF">
     <tspan font-size="11" font-weight="normal">c_rd, c_row, c_col →</tspan>
   </text>
-  <text x="995.0" y="354.2" text-anchor="middle" fill="#FFFFFF">
+  <text x="995.0" y="339.2" text-anchor="middle" fill="#FFFFFF">
     <tspan font-size="11" font-weight="normal">← c_rdata[31:0]</tspan>
+  </text>
+  <text x="995.0" y="354.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">← c_valid</tspan>
+  </text>
+  <text x="995.0" y="369.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">c_release →</tspan>
   </text>
   <polyline points="685,335 740,335" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
   <polyline points="890,335 920,335" fill="none" stroke="#0E8FB4" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#m_fill_0E8FB4)" marker-start="url(#m_fill_0E8FB4)" />
@@ -197,10 +215,10 @@
     <tspan font-size="12" font-weight="bold">controle do tile</tspan>
   </text>
   <text x="515.0" y="559.2" text-anchor="middle" fill="#1B2A05">
-    <tspan font-size="11" font-weight="normal">contador t = 0 … 3T−2 · en dos PEs</tspan>
+    <tspan font-size="11" font-weight="normal">contador t = 0 … 3T−2 · first_k → clr_acc</tspan>
   </text>
   <text x="515.0" y="574.2" text-anchor="middle" fill="#1B2A05">
-    <tspan font-size="11" font-weight="normal">first_k → clr_acc no tile_start</tspan>
+    <tspan font-size="11" font-weight="normal">last_k → cópia p/ banco C (S_WAIT_C se c_valid)</tspan>
   </text>
   <rect x="40" y="520" width="170" height="70" fill="#808285" stroke="#5A5C5E" stroke-width="1" rx="10.0" ry="10.0" />
   <text x="125.0" y="551.7" text-anchor="middle" fill="#FFFFFF">
@@ -230,29 +248,32 @@
   <text x="44.0" y="618.9" text-anchor="start" fill="#000000">
     <tspan font-size="11" font-weight="normal">Latência de um tile: 1 ciclo (clr_acc) + T passos + 2(T−1) de skew = 3T−1 ciclos</tspan>
   </text>
-  <rect x="62.4" y="161.5" width="75.2" height="27.0" fill="#FFFFFF" />
+  <rect x="48.4" y="161.5" width="103.2" height="27.0" fill="#FFFFFF" />
   <text x="100.0" y="172.2" text-anchor="middle" fill="#000000">
-    <tspan font-size="10" font-weight="normal">A: we, row,</tspan>
+    <tspan font-size="10" font-weight="normal">A: we, bank, row,</tspan>
   </text>
   <text x="100.0" y="184.8" text-anchor="middle" fill="#000000">
-    <tspan font-size="10" font-weight="normal">col, data[8]</tspan>
+    <tspan font-size="10" font-weight="normal">word, data[32]</tspan>
   </text>
-  <rect x="247.4" y="51.5" width="75.2" height="27.0" fill="#FFFFFF" />
+  <rect x="233.4" y="51.5" width="103.2" height="27.0" fill="#FFFFFF" />
   <text x="285.0" y="62.2" text-anchor="middle" fill="#000000">
-    <tspan font-size="10" font-weight="normal">B: we, row,</tspan>
+    <tspan font-size="10" font-weight="normal">B: we, bank, row,</tspan>
   </text>
   <text x="285.0" y="74.8" text-anchor="middle" fill="#000000">
-    <tspan font-size="10" font-weight="normal">col, data[8]</tspan>
+    <tspan font-size="10" font-weight="normal">word, data[32]</tspan>
   </text>
-  <rect x="688.9" y="327.8" width="47.2" height="14.5" fill="#FFFFFF" />
+  <rect x="677.7" y="327.8" width="69.6" height="14.5" fill="#FFFFFF" />
   <text x="712.5" y="338.5" text-anchor="middle" fill="#000000">
-    <tspan font-size="10" font-weight="normal">T² × 32</tspan>
+    <tspan font-size="10" font-weight="normal">cópia T²×32</tspan>
   </text>
-  <rect x="222.2" y="541.5" width="125.6" height="27.0" fill="#FFFFFF" />
-  <text x="285.0" y="552.2" text-anchor="middle" fill="#000000">
-    <tspan font-size="10" font-weight="normal">tile_start, first_k →</tspan>
+  <rect x="219.4" y="535.2" width="131.2" height="39.5" fill="#FFFFFF" />
+  <text x="285.0" y="546.0" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">tile_start, tile_bank,</tspan>
   </text>
-  <text x="285.0" y="564.8" text-anchor="middle" fill="#000000">
+  <text x="285.0" y="558.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">first_k, last_k →</tspan>
+  </text>
+  <text x="285.0" y="571.0" text-anchor="middle" fill="#000000">
     <tspan font-size="10" font-weight="normal">← busy, tile_done</tspan>
   </text>
   <rect x="465.2" y="495.2" width="69.6" height="14.5" fill="#FFFFFF" />

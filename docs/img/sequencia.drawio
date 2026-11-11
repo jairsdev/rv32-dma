@@ -58,7 +58,7 @@
         <mxCell vertex="1" parent="1" id="n_wfi" value="wfi → WAIT" style="rounded=0;whiteSpace=wrap;html=1;fontSize=11;fillColor=#FFF8DC;strokeColor=#C9B458;fontColor=#1A1A1A;">
           <mxGeometry x="40" y="195" width="120" height="30" as="geometry" />
         </mxCell>
-        <mxCell edge="1" parent="1" id="m4" value="AR: linhas de A e B" style="edgeStyle=none;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=none;endArrow=block;endFill=1;strokeWidth=1;strokeColor=#333333;exitX=0.5000;exitY=0.3125;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.3125;entryDx=0;entryDy=0;" source="ll_dma" target="ll_dmem">
+        <mxCell edge="1" parent="1" id="m4" value="AR burst: linhas de A e B" style="edgeStyle=none;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=none;endArrow=block;endFill=1;strokeWidth=1;strokeColor=#333333;exitX=0.5000;exitY=0.3125;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.3125;entryDx=0;entryDy=0;" source="ll_dma" target="ll_dmem">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="0" y="-10" as="offset" />
           </mxGeometry>
@@ -68,12 +68,12 @@
             <mxPoint x="0" y="-10" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell edge="1" parent="1" id="m6" value="buf A/B: we, row, col, data[8]" style="edgeStyle=none;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=none;endArrow=block;endFill=1;strokeWidth=1;strokeColor=#333333;exitX=0.5000;exitY=0.4028;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.4028;entryDx=0;entryDy=0;" source="ll_dma" target="ll_acc">
+        <mxCell edge="1" parent="1" id="m6" value="buf A/B: bank, row, word, data[32]" style="edgeStyle=none;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=none;endArrow=block;endFill=1;strokeWidth=1;strokeColor=#333333;exitX=0.5000;exitY=0.4028;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.4028;entryDx=0;entryDy=0;" source="ll_dma" target="ll_acc">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="0" y="-10" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell edge="1" parent="1" id="m7" value="tile_start (first_k = k0 = 0)" style="edgeStyle=none;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=none;endArrow=block;endFill=1;strokeWidth=1;strokeColor=#333333;exitX=0.5000;exitY=0.4583;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.4583;entryDx=0;entryDy=0;" source="ll_dma" target="ll_acc">
+        <mxCell edge="1" parent="1" id="m7" value="tile_start (tile_bank, first_k, last_k)" style="edgeStyle=none;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=none;endArrow=block;endFill=1;strokeWidth=1;strokeColor=#333333;exitX=0.5000;exitY=0.4583;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.4583;entryDx=0;entryDy=0;" source="ll_dma" target="ll_acc">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="0" y="-10" as="offset" />
           </mxGeometry>
@@ -86,7 +86,7 @@
             <mxPoint x="0" y="-10" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell edge="1" parent="1" id="m9" value="c_rd, c_row, c_col" style="edgeStyle=none;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=none;endArrow=block;endFill=1;strokeWidth=1;strokeColor=#333333;exitX=0.5000;exitY=0.6389;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.6389;entryDx=0;entryDy=0;" source="ll_dma" target="ll_acc">
+        <mxCell edge="1" parent="1" id="m9" value="c_valid → c_rd, c_row, c_col" style="edgeStyle=none;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=none;endArrow=block;endFill=1;strokeWidth=1;strokeColor=#333333;exitX=0.5000;exitY=0.6389;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.6389;entryDx=0;entryDy=0;" source="ll_dma" target="ll_acc">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="0" y="-10" as="offset" />
           </mxGeometry>
@@ -96,12 +96,12 @@
             <mxPoint x="0" y="-10" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell edge="1" parent="1" id="m11" value="AW + W: C (int32)" style="edgeStyle=none;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=none;endArrow=block;endFill=1;strokeWidth=1;strokeColor=#333333;exitX=0.5000;exitY=0.7292;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.7292;entryDx=0;entryDy=0;" source="ll_dma" target="ll_dmem">
+        <mxCell edge="1" parent="1" id="m11" value="AW + W burst: linha de C (int32)" style="edgeStyle=none;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=none;endArrow=block;endFill=1;strokeWidth=1;strokeColor=#333333;exitX=0.5000;exitY=0.7292;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.7292;entryDx=0;entryDy=0;" source="ll_dma" target="ll_dmem">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="0" y="-10" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell edge="1" parent="1" id="m12" value="B: OKAY" style="edgeStyle=none;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=none;endArrow=block;endFill=1;strokeWidth=1;strokeColor=#333333;dashed=1;endArrow=open;endFill=0;exitX=0.5000;exitY=0.7667;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.7667;entryDx=0;entryDy=0;" source="ll_dmem" target="ll_dma">
+        <mxCell edge="1" parent="1" id="m12" value="B: OKAY → c_release" style="edgeStyle=none;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=none;endArrow=block;endFill=1;strokeWidth=1;strokeColor=#333333;dashed=1;endArrow=open;endFill=0;exitX=0.5000;exitY=0.7667;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.7667;entryDx=0;entryDy=0;" source="ll_dmem" target="ll_dma">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="0" y="-10" as="offset" />
           </mxGeometry>
