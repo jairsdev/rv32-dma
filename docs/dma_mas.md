@@ -492,7 +492,7 @@ O canal de leitura fica ocupado sem parar. Os dois primeiros tiles terminam em 1
 
 ### 7.5 Ganho estimado
 
-Modelo analítico em ciclos. A coluna "Só A/B" mostra o que se perderia sem o banco C.
+Modelo analítico em ciclos (fórmulas na 14.1). A coluna "Só A/B" mostra o que se perderia sem o banco C: com os 2 bancos de A/B mas sem o banco C, a gravação de cada tile volta a ser serial, `tiles · (kb · max(Ld, Cp) + St) + Cp`.
 
 | Caso (M×K×N) | T | Serial (`PINGPONG=0`) | Só A/B | A/B + C (`PINGPONG=1`) | Ganho |
 |---|---|---|---|---|---|
@@ -505,7 +505,10 @@ Modelo analítico em ciclos. A coluna "Só A/B" mostra o que se perderia sem o b
 
 Como ler esses números:
 
-1. **De onde vem o ganho:** de esconder cálculo e gravação atrás da carga, que é a fase dominante. Como a carga continua sendo o gargalo, o teto do ganho é `(cálculo + gravação) / total`, por volta de 35 %.
+1. **De onde vem o ganho:** de esconder cálculo e gravação atrás da carga, que é a fase dominante.
+   - **Teto do ganho:** com muitos tiles (sem enchimento e esvaziamento do pipeline) e `kb · Ld ≥ St`, o ganho tende a `(kb · Cp + St) / (kb · (Ld + Cp) + St)`. Isso dá ≈ 44 % em T = 4 com kb = 2 e ≈ 46 % em T = 8 com kb = 2.
+   - **Valores da tabela:** os ≈ 35 % são menores porque os casos têm poucos tiles, e o primeiro bloco e o último C não se sobrepõem a nada.
+   - **Com K grande:** kb cresce, St pesa menos, e o ganho cai para perto de `Cp / (Ld + Cp)` (≈ 26 % em T = 4).
 2. **Quando não há ganho:** com 1 tile e 1 bloco (matriz ≤ T, como 8×8×8 em T = 8) não existe "próximo bloco" para buscar. O ping-pong só paga quando há vários blocos ou tiles, que é justamente o caso do tiling, um requisito do enunciado (§4).
 3. **O modelo é um limite superior:** a DMEM é uma SRAM **single-port** (seção 12.2). Leitura e escrita do DMA disputam o `axi_mem_ctrl`, que atende uma transação por vez, então o ganho real fica abaixo do estimado. Por isso o `PINGPONG=0` existe: o número final vem de `CYCLES` medido em simulação, não desta tabela.
 
@@ -1094,9 +1097,21 @@ Variáveis:
 | Modo | Ciclos (aproximação) |
 |---|---|
 | `PINGPONG = 0` | `tiles · (kb·(Ld + Cp) + St)` |
-| `PINGPONG = 1` | `tiles · kb · max(Ld, Cp) + Cp + St` (enchimento e esvaziamento do pipeline) |
+| `PINGPONG = 1` | `kb·Ld + (tiles − 1) · max(kb · max(Ld, Cp), St) + Cp + St` |
 
-Essas fórmulas não incluem: linhas de padding (mais rápidas, sem acesso à memória), disputa da SRAM single-port entre leitura e escrita do DMA, e os ciclos de CHECK/DONE. **São estimativas para o projeto. O número oficial é sempre o `CYCLES` medido.**
+No `PINGPONG = 1`, a parcela `kb·Ld` é a carga do primeiro tile (enchimento do pipeline) e `Cp + St` é o cálculo e a gravação do último (esvaziamento). Cada tile intermediário custa o maior entre a carga dos seus blocos e a gravação do tile anterior: o banco C só libera quando a gravação termina. Quando `kb·Ld ≥ St`, a fórmula se reduz a `tiles · kb · Ld + Cp + St`, que é o caso de todas as linhas da 14.2. O termo `St` só domina com T = 8 e kb = 1, por exemplo 16×8×16 (T = 8, 4 tiles): 80 + 3·88 + 23 + 88 = 455 ciclos.
+
+**O que as fórmulas não incluem:**
+- Linhas de padding, mais rápidas porque não acessam a memória.
+- Disputa da SRAM single-port entre leitura e escrita do DMA.
+- Os ciclos de CHECK/ERROR/DONE.
+- O handshake entre blocos no compute (`tile_done` → `C_FREE` → `C_WAIT_FULL` → `C_START`, ≈ 3 ciclos por bloco). Ele fica escondido atrás da carga com `PINGPONG = 1` e soma com `PINGPONG = 0`.
+- O handshake entre linhas fica escondido pela fila de comando dos motores (5.4). Sem ela, cada linha custaria ≈ 4 ciclos a mais.
+- **L e `W_OV` são estimativas:**
+  - L = 3 inclui a arbitragem do xbar; no TB-DMA, com M1 direto na memória, L ≈ 2.
+  - `W_OV` = 3 é otimista: a forma de onda da 4.4 leva T + 4 ciclos por linha de C.
+
+**São estimativas para o projeto. O número oficial é sempre o `CYCLES` medido.**
 
 ### 14.2 Estimativas
 
