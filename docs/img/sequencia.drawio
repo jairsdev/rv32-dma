@@ -63,7 +63,7 @@
             <mxPoint x="0" y="-10" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell edge="1" parent="1" id="m5" value="R: 4 × int8 por palavra" style="edgeStyle=none;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=none;endArrow=block;endFill=1;strokeWidth=1;strokeColor=#333333;dashed=1;endArrow=open;endFill=0;exitX=0.5000;exitY=0.3542;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.3542;entryDx=0;entryDy=0;" source="ll_dmem" target="ll_dma">
+        <mxCell edge="1" parent="1" id="m5" value="R: 4 × int8 por beat" style="edgeStyle=none;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=none;endArrow=block;endFill=1;strokeWidth=1;strokeColor=#333333;dashed=1;endArrow=open;endFill=0;exitX=0.5000;exitY=0.3542;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.3542;entryDx=0;entryDy=0;" source="ll_dmem" target="ll_dma">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="0" y="-10" as="offset" />
           </mxGeometry>

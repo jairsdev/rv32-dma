@@ -151,10 +151,10 @@ def accel(T=4):
     e("e_c", "mux_c", "dma_c", (890, 335), (920, 335), "", ST_SIDEBAND)
 
     # controle do tile
-    v("ctrl", f"controle do tile<br>{SMALL}contador t = 0 … 3T−2 · first_k → clr_acc<br>last_k → cópia p/ banco C (S_WAIT_C se c_valid)</span>",
+    v("ctrl", f"controle do tile (A_IDLE / A_RUN / A_WAIT_C)<br>{SMALL}contador t = 0 … 3T−2 · first_k → clr_acc<br>last_k → cópia p/ banco C (A_WAIT_C se c_valid)</span>",
       360, 520, 310, 70, ST_SWITCH)
     v("dma_ctl", f"DMA<br>{SMALL}controle do tile</span>", 40, 520, 170, 70, ST_GRAY)
-    e("e_ctl", "dma_ctl", "ctrl", (210, 555), (360, 555), "tile_start, tile_bank,<br>first_k, last_k →<br>← busy, tile_done", ST_SIDEBAND)
+    e("e_ctl", "dma_ctl", "ctrl", (210, 555), (360, 555), "tile_start, tile_bank,<br>first_k, last_k →<br>← busy, acc_active,<br>tile_done", ST_SIDEBAND)
     e("e_en", "ctrl", "grid", (500, 520), (500, 485), "en, clr_acc", ST_DATA)
 
     v("pe_det", "<b>PE(i,j)</b><br>a_out ← a_in · b_out ← b_in (registrados)<br>acc ← acc + a_in × b_in<br>"
@@ -183,18 +183,18 @@ def dma_blocks():
     v("regs", f"dma_regs<br>{SMALL}slave AXI4 (S1)<br>registradores · irq</span>",
       40, 30, 180, 70, ST_GRAY)
     v("ctrl", f"dma_ctrl<br>{SMALL}IDLE → CHECK → RUN → DRAIN → ERROR/DONE<br>"
-              "strides · n_tiles · n_blocks · erro · soft reset</span>", 340, 30, 440, 70, ST_SWITCH)
+              "strides · last_i0/j0/k0 · bank_clr · erro · soft reset</span>", 340, 30, 440, 70, ST_SWITCH)
     v("load", f"dma_load<br>{SMALL}produtor · itera i0 → j0 → k0<br>T linhas de A + T de B</span>",
       40, 180, 220, 80, ST_MASTER)
-    v("bank", f"dma_bank_ctrl<br>{SMALL}estado dos bancos<br>EMPTY/LOADING/FULL/COMPUTING<br>"
-              "ld_ptr · cp_ptr</span>", 300, 180, 220, 80, ST_ADAPTER)
-    v("comp", f"dma_compute<br>{SMALL}tile_start por banco cheio<br>first_k · last_k</span>",
+    v("bank", f"dma_bank_ctrl<br>{SMALL}EMPTY/LOADING/FULL/COMPUTING<br>"
+              "first_k · last_k · last_blk<br>ld_ptr · cp_ptr</span>", 300, 180, 220, 80, ST_ADAPTER)
+    v("comp", f"dma_compute<br>{SMALL}tile_start por banco cheio<br>fim no banco com last_blk</span>",
       560, 180, 220, 80, ST_MASTER)
-    v("rd", f"dma_rd_engine<br>{SMALL}AR/R · 1 burst por linha<br>4 KB · alinhamento · padding</span>",
+    v("rd", f"dma_rd_engine<br>{SMALL}AR/R · fila de 1 comando<br>4 KB · alinhamento · padding</span>",
       40, 330, 220, 80, ST_GRAY)
     v("store", f"dma_store<br>{SMALL}consumidor · linhas válidas de C<br>c_release por tile</span>",
       560, 440, 220, 70, ST_MASTER)
-    v("wr", f"dma_wr_engine<br>{SMALL}AW/W/B · bursts de C · WLAST<br>fila de 2 entradas (c_rdata)</span>",
+    v("wr", f"dma_wr_engine<br>{SMALL}AW/W/B · fila de 1 comando · WLAST<br>fila de 2 entradas (c_rdata)</span>",
       560, 560, 220, 80, ST_GRAY)
     v("acc", f"Acelerador<br>{SMALL}buf A/B × 2 bancos<br>malha T×T<br>banco C</span>",
       860, 180, 220, 460, ST_MASTER)
@@ -206,8 +206,8 @@ def dma_blocks():
       ST_TEXT + "fontSize=10;fontColor=#0B6F8A;")
     e("e_irq", "regs", "cpu", (200, 30), (970, 30), "irq", ST_IRQ, via=[(200, 15), (970, 15)])
     e("e_cl", "ctrl", "load", (360, 100), (100, 180), "run · stop", ctl, via=[(360, 150), (100, 150)], offset=(-60, 0))
-    e("e_cb", "ctrl", "bank", (410, 100), (410, 180), "reset dos<br>bancos", ctl)
-    e("e_cc", "ctrl", "comp", (670, 100), (670, 180), "run · stop<br>n_blocks", ctl)
+    e("e_cb", "ctrl", "bank", (410, 100), (410, 180), "bank_clr<br>(CHECK)", ctl)
+    e("e_cc", "ctrl", "comp", (670, 100), (670, 180), "run · stop", ctl)
     e("e_cs", "ctrl", "store", (540, 100), (620, 440), "run · stop", ctl, via=[(540, 420), (620, 420)],
       offset=(0, -30))
     e("e_lb", "load", "bank", (260, 220), (300, 220), "", ST_DATA + "startArrow=classic;")
@@ -223,6 +223,12 @@ def dma_blocks():
       ST_SIDEBAND, offset=(0, -35))
     e("e_as", "acc", "store", (860, 475), (780, 475), "c_valid →<br>← c_release", ST_SIDEBAND)
     e("e_wa", "wr", "acc", (780, 600), (860, 600), "c_rd, row, col →<br>← c_rdata", ST_SIDEBAND)
+    e("e_sl", "store", "load", (560, 490), (260, 245), "store_ativo<br>(serial_ok)", ctl, via=[(290, 490), (290, 245)],
+      offset=(0, -50))
+    e("e_ce", "comp", "store", (740, 260), (740, 440), "compute_end", ctl, offset=(0, -60))
+    v("ret", f"{SMALL}retornos ao dma_ctrl: load_end · compute_end · store_end ·<br>"
+             "rd_idle · wr_idle · rd_err · wr_err · acc_busy · c_valid<br>"
+             "acc_active → dma_regs (CYC_COMPUTE)</span>", 170, 600, 380, 60, ST_TEXT + "fontSize=10;fontColor=#0B6F8A;")
     return d
 
 
@@ -463,7 +469,7 @@ def sequencia():
     msg("m3", "regs", "dma", 175, "start")
     v("n_wfi", "wfi → WAIT", 40, 195, 120, 30, ST_NOTE)
     msg("m4", "dma", "dmem", 285, "AR burst: linhas de A e B")
-    msg("m5", "dmem", "dma", 315, "R: 4 × int8 por palavra", ST_RET)
+    msg("m5", "dmem", "dma", 315, "R: 4 × int8 por beat", ST_RET)
     msg("m6", "dma", "acc", 350, "buf A/B: bank, row, word, data[32]")
     msg("m7", "dma", "acc", 390, "tile_start (tile_bank, first_k, last_k)")
     v("n_comp", "3T−1 ciclos", 790, 405, 140, 30, ST_NOTE)
