@@ -1,0 +1,15 @@
+rtl/dma/dma_cmd_queue.v
+rtl/dma/dma_burst_split.v
+rtl/dma/dma_tile_span.v
+rtl/dma/dma_c_fifo.v
+rtl/dma/dma_regs_axi_if.v
+rtl/dma/dma_regs.v
+rtl/dma/dma_ctrl.v
+rtl/dma/dma_bank_ctrl.v
+rtl/dma/dma_load.v
+rtl/dma/dma_compute.v
+rtl/dma/dma_store.v
+rtl/dma/dma_rd_engine.v
+rtl/dma/dma_wr_engine.v
+rtl/dma/dma_assert.v
+rtl/dma/dma.v
