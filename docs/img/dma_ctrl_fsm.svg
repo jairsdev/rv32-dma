@@ -1,0 +1,116 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif" width="970" height="545" viewBox="0 0 970 545">
+  <defs>
+    <marker id="m_fill_333333" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#333333" />
+    </marker>
+    <marker id="m_fill_D0021B" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#D0021B" />
+    </marker>
+  </defs>
+  <rect x="0" y="0" fill="#FFFFFF" width="970" height="545" />
+  <rect x="300" y="40" width="260" height="60" fill="#FFFFFF" stroke="#0B6F8A" stroke-width="2" rx="9.0" ry="9.0" />
+  <text x="430.0" y="66.7" text-anchor="middle" fill="#1A1A1A">
+    <tspan font-size="12" font-weight="bold">IDLE</tspan>
+  </text>
+  <text x="430.0" y="81.7" text-anchor="middle" fill="#1A1A1A">
+    <tspan font-size="11" font-weight="normal">ctrl_busy = 0</tspan>
+  </text>
+  <rect x="300" y="140" width="260" height="60" fill="#FFFFFF" stroke="#0B6F8A" stroke-width="2" rx="9.0" ry="9.0" />
+  <text x="430.0" y="166.7" text-anchor="middle" fill="#1A1A1A">
+    <tspan font-size="12" font-weight="bold">CHECK</tspan>
+  </text>
+  <text x="430.0" y="181.7" text-anchor="middle" fill="#1A1A1A">
+    <tspan font-size="11" font-weight="normal">valida DIM/ADDR · strides · bank_clr</tspan>
+  </text>
+  <rect x="300" y="240" width="260" height="60" fill="#FFFFFF" stroke="#0B6F8A" stroke-width="2" rx="9.0" ry="9.0" />
+  <text x="430.0" y="266.7" text-anchor="middle" fill="#1A1A1A">
+    <tspan font-size="12" font-weight="bold">RUN</tspan>
+  </text>
+  <text x="430.0" y="281.7" text-anchor="middle" fill="#1A1A1A">
+    <tspan font-size="11" font-weight="normal">run = 1 · load, compute, store ativos</tspan>
+  </text>
+  <rect x="300" y="440" width="260" height="60" fill="#E8F6FA" stroke="#0B6F8A" stroke-width="2" rx="9.0" ry="9.0" />
+  <text x="430.0" y="466.7" text-anchor="middle" fill="#1A1A1A">
+    <tspan font-size="12" font-weight="bold">DONE</tspan>
+  </text>
+  <text x="430.0" y="481.7" text-anchor="middle" fill="#1A1A1A">
+    <tspan font-size="11" font-weight="normal">pulso done → STATUS.DONE, irq</tspan>
+  </text>
+  <rect x="650" y="240" width="260" height="60" fill="#FDECEC" stroke="#D0021B" stroke-width="2" rx="9.0" ry="9.0" />
+  <text x="780.0" y="266.7" text-anchor="middle" fill="#1A1A1A">
+    <tspan font-size="12" font-weight="bold">DRAIN</tspan>
+  </text>
+  <text x="780.0" y="281.7" text-anchor="middle" fill="#1A1A1A">
+    <tspan font-size="11" font-weight="normal">stop = 1 · FSMs param na linha</tspan>
+  </text>
+  <rect x="650" y="340" width="260" height="60" fill="#FDECEC" stroke="#D0021B" stroke-width="2" rx="9.0" ry="9.0" />
+  <text x="780.0" y="366.7" text-anchor="middle" fill="#1A1A1A">
+    <tspan font-size="12" font-weight="bold">ERROR</tspan>
+  </text>
+  <text x="780.0" y="381.7" text-anchor="middle" fill="#1A1A1A">
+    <tspan font-size="11" font-weight="normal">STATUS.ERROR = 1 · ERR_CODE</tspan>
+  </text>
+  <polyline points="430,100 430,140" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#m_fill_333333)" />
+  <polyline points="430,200 430,240" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#m_fill_333333)" />
+  <polyline points="560,170 950,170 950,370 910,370" fill="none" stroke="#D0021B" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#m_fill_D0021B)" />
+  <polyline points="520,140 520,100" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#m_fill_333333)" />
+  <polyline points="560,270 650,270" fill="none" stroke="#D0021B" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#m_fill_D0021B)" />
+  <polyline points="780,300 780,340" fill="none" stroke="#D0021B" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#m_fill_D0021B)" />
+  <polyline points="780,240 780,70 560,70" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#m_fill_333333)" />
+  <polyline points="780,400 780,470 560,470" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#m_fill_333333)" />
+  <polyline points="430,300 430,440" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#m_fill_333333)" />
+  <polyline points="300,470 200,470 200,70 300,70" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#m_fill_333333)" />
+  <text x="44.0" y="516.4" text-anchor="start" fill="#000000">
+    <tspan font-size="11" font-weight="normal">quieto = load_end ∧ compute_end ∧ store_end ∧ rd_idle ∧ wr_idle ∧ ¬acc_busy ∧ ¬c_valid</tspan>
+  </text>
+  <rect x="412.0" y="112.8" width="36.0" height="14.5" fill="#FFFFFF" />
+  <text x="430.0" y="123.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">start</tspan>
+  </text>
+  <rect x="389.6" y="212.8" width="80.8" height="14.5" fill="#FFFFFF" />
+  <text x="430.0" y="223.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">config válida</tspan>
+  </text>
+  <rect x="826.2" y="116.5" width="97.6" height="27.0" fill="#FFFFFF" />
+  <text x="875.0" y="127.2" text-anchor="middle" fill="#D0021B">
+    <tspan font-size="10" font-weight="normal">dimensão 0 (1) ·</tspan>
+  </text>
+  <text x="875.0" y="139.8" text-anchor="middle" fill="#D0021B">
+    <tspan font-size="10" font-weight="normal">desalinhado (2)</tspan>
+  </text>
+  <rect x="523.0" y="112.8" width="64.0" height="14.5" fill="#FFFFFF" />
+  <text x="555.0" y="123.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">soft_reset</tspan>
+  </text>
+  <rect x="559.0" y="231.5" width="92.0" height="27.0" fill="#FFFFFF" />
+  <text x="605.0" y="242.2" text-anchor="middle" fill="#D0021B">
+    <tspan font-size="10" font-weight="normal">rd_err · wr_err</tspan>
+  </text>
+  <text x="605.0" y="254.8" text-anchor="middle" fill="#D0021B">
+    <tspan font-size="10" font-weight="normal">· soft_reset</tspan>
+  </text>
+  <rect x="789.6" y="312.8" width="80.8" height="14.5" fill="#FFFFFF" />
+  <text x="830.0" y="323.5" text-anchor="middle" fill="#D0021B">
+    <tspan font-size="10" font-weight="normal">quieto ∧ erro</tspan>
+  </text>
+  <rect x="697.8" y="62.8" width="114.4" height="14.5" fill="#FFFFFF" />
+  <text x="755.0" y="73.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">quieto ∧ soft_reset</tspan>
+  </text>
+  <rect x="681.4" y="462.8" width="47.2" height="14.5" fill="#FFFFFF" />
+  <text x="705.0" y="473.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">1 ciclo</tspan>
+  </text>
+  <rect x="364.4" y="356.5" width="131.2" height="27.0" fill="#FFFFFF" />
+  <text x="430.0" y="367.2" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">load_end ∧ compute_end</tspan>
+  </text>
+  <text x="430.0" y="379.8" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">∧ store_end</tspan>
+  </text>
+  <rect x="176.4" y="262.8" width="47.2" height="14.5" fill="#FFFFFF" />
+  <text x="200.0" y="273.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">1 ciclo</tspan>
+  </text>
+</svg>

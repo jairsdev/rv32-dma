@@ -1,0 +1,68 @@
+<mxfile host="app.diagrams.net" version="24.0.0">
+  <diagram id="dma_compute_fsm" name="dma_compute">
+    <mxGraphModel dx="1000" dy="660" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1000" pageHeight="660" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell vertex="1" parent="1" id="idle" value="C_IDLE&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;—&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#FFFFFF;strokeColor=#0B6F8A;strokeWidth=2;fontColor=#1A1A1A;">
+          <mxGeometry x="320" y="40" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="wait" value="C_WAIT_FULL&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;espera banco cp_ptr cheio&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#FFFFFF;strokeColor=#0B6F8A;strokeWidth=2;fontColor=#1A1A1A;">
+          <mxGeometry x="320" y="140" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="start" value="C_START&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;tile_start · tile_bank = cp_ptr&lt;br&gt;banco → COMPUTING&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#FFFFFF;strokeColor=#0B6F8A;strokeWidth=2;fontColor=#1A1A1A;">
+          <mxGeometry x="320" y="240" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="wdone" value="C_WAIT_DONE&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;malha calculando (3T−1 ciclos)&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#FFFFFF;strokeColor=#0B6F8A;strokeWidth=2;fontColor=#1A1A1A;">
+          <mxGeometry x="320" y="340" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="free" value="C_FREE&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;banco → EMPTY · cp_ptr ^= PINGPONG&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#FFFFFF;strokeColor=#0B6F8A;strokeWidth=2;fontColor=#1A1A1A;">
+          <mxGeometry x="320" y="440" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="end" value="C_END&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;compute_end = 1&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#E8F6FA;strokeColor=#0B6F8A;strokeWidth=2;fontColor=#1A1A1A;">
+          <mxGeometry x="320" y="560" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="t1" value="run" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="idle" target="wait">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="t2" value="¬stop ∧ bank[cp_ptr] = FULL ∧ ¬acc_busy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="wait" target="start">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="t3" value="1 ciclo" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="start" target="wdone">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="t4" value="tile_done" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="wdone" target="free">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="t5" value="¬last_blk" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=1.0000;exitY=0.5000;exitDx=0;exitDy=0;entryX=1.0000;entryY=0.5000;entryDx=0;entryDy=0;" source="free" target="wait">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="680" y="470" />
+              <mxPoint x="680" y="170" />
+            </Array>
+            <mxPoint x="35" y="0" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell edge="1" parent="1" id="t6" value="last_blk do banco" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="free" target="end">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="t7" value="stop (prioridade)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;dashed=1;strokeColor=#D0021B;fontColor=#D0021B;exitX=0.0000;exitY=0.5000;exitDx=0;exitDy=0;entryX=0.0000;entryY=0.5000;entryDx=0;entryDy=0;" source="wait" target="end">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="180" y="170" />
+              <mxPoint x="180" y="590" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell edge="1" parent="1" id="t8" value="¬run" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=1.0000;exitY=0.5000;exitDx=0;exitDy=0;entryX=1.0000;entryY=0.5000;entryDx=0;entryDy=0;" source="end" target="idle">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="780" y="590" />
+              <mxPoint x="780" y="70" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

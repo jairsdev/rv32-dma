@@ -1,0 +1,86 @@
+<mxfile host="app.diagrams.net" version="24.0.0">
+  <diagram id="dma_ctrl_fsm" name="dma_ctrl">
+    <mxGraphModel dx="1000" dy="540" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1000" pageHeight="540" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell vertex="1" parent="1" id="idle" value="IDLE&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;ctrl_busy = 0&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#FFFFFF;strokeColor=#0B6F8A;strokeWidth=2;fontColor=#1A1A1A;">
+          <mxGeometry x="300" y="40" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="check" value="CHECK&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;valida DIM/ADDR · strides · bank_clr&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#FFFFFF;strokeColor=#0B6F8A;strokeWidth=2;fontColor=#1A1A1A;">
+          <mxGeometry x="300" y="140" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="run" value="RUN&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;run = 1 · load, compute, store ativos&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#FFFFFF;strokeColor=#0B6F8A;strokeWidth=2;fontColor=#1A1A1A;">
+          <mxGeometry x="300" y="240" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="done" value="DONE&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;pulso done → STATUS.DONE, irq&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#E8F6FA;strokeColor=#0B6F8A;strokeWidth=2;fontColor=#1A1A1A;">
+          <mxGeometry x="300" y="440" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="drain" value="DRAIN&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;stop = 1 · FSMs param na linha&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#FDECEC;strokeColor=#D0021B;strokeWidth=2;fontColor=#1A1A1A;">
+          <mxGeometry x="650" y="240" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="error" value="ERROR&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;STATUS.ERROR = 1 · ERR_CODE&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#FDECEC;strokeColor=#D0021B;strokeWidth=2;fontColor=#1A1A1A;">
+          <mxGeometry x="650" y="340" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="t1" value="start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="idle" target="check">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="t2" value="config válida" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="check" target="run">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="t3" value="dimensão 0 (1) ·&lt;br&gt;desalinhado (2)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;dashed=1;strokeColor=#D0021B;fontColor=#D0021B;exitX=1.0000;exitY=0.5000;exitDx=0;exitDy=0;entryX=1.0000;entryY=0.5000;entryDx=0;entryDy=0;" source="check" target="error">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="950" y="170" />
+              <mxPoint x="950" y="370" />
+            </Array>
+            <mxPoint x="0" y="-40" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell edge="1" parent="1" id="t10" value="soft_reset" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.8462;exitY=0.0000;exitDx=0;exitDy=0;entryX=0.8462;entryY=1.0000;entryDx=0;entryDy=0;" source="check" target="idle">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="35" y="0" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell edge="1" parent="1" id="t4" value="rd_err · wr_err&lt;br&gt;· soft_reset" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;dashed=1;strokeColor=#D0021B;fontColor=#D0021B;exitX=1.0000;exitY=0.5000;exitDx=0;exitDy=0;entryX=0.0000;entryY=0.5000;entryDx=0;entryDy=0;" source="run" target="drain">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="0" y="-25" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell edge="1" parent="1" id="t5" value="quieto ∧ erro" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;dashed=1;strokeColor=#D0021B;fontColor=#D0021B;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="drain" target="error">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="50" y="0" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell edge="1" parent="1" id="t6" value="quieto ∧ soft_reset" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.5000;exitY=0.0000;exitDx=0;exitDy=0;entryX=1.0000;entryY=0.5000;entryDx=0;entryDy=0;" source="drain" target="idle">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="780" y="70" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell edge="1" parent="1" id="t7" value="1 ciclo" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=1.0000;entryY=0.5000;entryDx=0;entryDy=0;" source="error" target="done">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="780" y="470" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell edge="1" parent="1" id="t8" value="load_end ∧ compute_end&lt;br&gt;∧ store_end" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="run" target="done">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="t9" value="1 ciclo" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1.5;startArrow=none;strokeColor=#333333;exitX=0.0000;exitY=0.5000;exitDx=0;exitDy=0;entryX=0.0000;entryY=0.5000;entryDx=0;entryDy=0;" source="done" target="idle">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="200" y="470" />
+              <mxPoint x="200" y="70" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="note" value="quieto = load_end ∧ compute_end ∧ store_end ∧ rd_idle ∧ wr_idle ∧ ¬acc_busy ∧ ¬c_valid" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=11;">
+          <mxGeometry x="40" y="500" width="760" height="25" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
