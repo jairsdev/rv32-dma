@@ -25,7 +25,7 @@ SMOKE      := $(BUILD)/vec/smoke
 SMOKE_ARGS := +DMEM=$(SMOKE)/dmem.hex +CEXP=$(SMOKE)/c_expected.hex +M=6 +K=5 +N=7
 TB_DMA_SRC := tb/unit_dma/tb_dma.v $(TB_COMMON) $(ACCEL) $(RTL)
 
-.PHONY: all lint selftest tb_regs tb_rd tb_wr tb_accel tb_dma unit regress wave clean
+.PHONY: all lint selftest tb_regs tb_rd tb_wr tb_mem tb_accel tb_dma unit regress wave clean
 
 all: lint unit tb_accel tb_dma
 
@@ -78,6 +78,24 @@ tb_wr: | $(BUILD)
 	  done; \
 	done; done
 
+# TB-MEM: axi_mem_ctrl sozinho, sem backpressure (com as medicoes de L e W_OV)
+# e com backpressure aleatoria em 3 sementes
+TB_MEM_SRC := tb/unit_mem/tb_axi_mem_ctrl.v tb/common/axi_checker.v tb/common/axi_rand_stall.v $(MEM_CTRL)
+
+tb_mem: | $(BUILD)
+ifeq ($(SIM),xcelium)
+	@for st in "" "+STALL +SEED=1" "+STALL +SEED=2" "+STALL +SEED=3"; do \
+	  $(XRUN) -top tb_axi_mem_ctrl -xmlibdirname $(BUILD)/xcelium_mem -l $(BUILD)/tb_mem.log \
+	    $(TB_MEM_SRC) $$st > /dev/null; \
+	  grep -hE "MEDIDA|TB_MEM|FALHA|VIOLACAO|\*[EFW]," $(BUILD)/tb_mem.log; \
+	done
+else
+	@$(IVERILOG) -o $(BUILD)/tb_mem.vvp $(TB_MEM_SRC) $(CHECK_CLEAN)
+	@for st in "" "+STALL +SEED=1" "+STALL +SEED=2" "+STALL +SEED=3"; do \
+	  $(VVP) $(BUILD)/tb_mem.vvp $$st | grep -E "MEDIDA|TB_MEM|FALHA|VIOLACAO"; \
+	done
+endif
+
 # TB-ACC nas 6 configuracoes (T = 2, 4, 8 x PINGPONG = 0, 1)
 tb_accel: | $(BUILD)
 ifeq ($(SIM),xcelium)
@@ -109,7 +127,7 @@ else
 	$(VVP) $(BUILD)/tb_dma.vvp $(SMOKE_ARGS) | grep -E "RESULT|PASS|FAIL|FALHA"
 endif
 
-unit: selftest tb_regs tb_rd tb_wr
+unit: selftest tb_regs tb_rd tb_wr tb_mem
 
 regress: | $(BUILD)
 	$(PYTHON) scripts/run_dma_regress.py --sim $(SIM)
