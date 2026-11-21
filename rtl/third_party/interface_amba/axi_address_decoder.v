@@ -110,8 +110,8 @@ module axi_address_decoder (
     // =====================================================================================
     // Decodificacao (combinacional) - faixa e tamanho
     // =====================================================================================
-    // Fim do burst = Aligned_Address + (len+1)*2^size - 1 (IHI0022E §A3.4.1); a DMEM tem
-    // 64 KiB, entao "dentro da faixa" e "bits [27:16] todos zero" no inicio e no fim. // R1
+    // Fim do burst = Aligned_Address + (len+1)*2^size - 1 (IHI0022E §A3.4.1).          // R1
+    // A DMEM tem 64 KiB: "dentro da faixa" e "bits [27:16] todos zero" no inicio e no fim. // R1
     // addr[31:28] nao e olhado: quem decodifica o prefixo e o xbar (MAS rv32-dma §12.1). // R1
     wire [31:0] ar_nbytes_w  = 32'd1 << s_axi_arsize;
     wire [31:0] ar_aligned_w = s_axi_araddr & ~(ar_nbytes_w - 32'd1);
