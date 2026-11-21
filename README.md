@@ -79,12 +79,36 @@ Objetivo: garantir que o grupo entendeu o escopo e definiu como os módulos se c
   - [x] Simulação com autocheck ([`tb/unit_accel/tb_accel.v`](tb/unit_accel/tb_accel.v)) simulando injeção de dados pelo DMA
   - [x] Validação comprovada para malhas 2×2 (com múltiplos blocos de K) e 4×4
 
-### Entrega 3 — RTL do DMA e Memória Compartilhada
+### Entrega 3 — RTL do DMA e Memória Compartilhada (22/11/2026)
 - [x] **FSMs do DMA** ([`rtl/dma/`](rtl/dma/)): leitura de A e B, escrita de C, contadores e endereços, registradores e motores AXI4 (MAS §5 a §10)
-- [x] **Acelerador v2** ([`rtl/accel/accel.v`](rtl/accel/accel.v)): porta de 32 bits, bancos ping-pong e banco C, como pede o MAS §11
-- [ ] **Memória compartilhada** (`rtl/top/axi_mem_ctrl.v`, MAS §12): ainda não existe. Por enquanto o TB-DMA usa a memória comportamental [`tb/models/axi_mem_model.v`](tb/models/axi_mem_model.v)
+- [x] **Acelerador v2** ([`rtl/accel/accel.v`](rtl/accel/accel.v)): porta de 32 bits, bancos ping-pong e banco C, como pede o MAS §11. TB-ACC passando em T = 2, 4, 8 × `PINGPONG` = 0, 1
+- [ ] **Memória compartilhada** (passo 2 do MAS, sugerido para Cedraz). Até lá os TBs usam a memória comportamental [`tb/models/axi_mem_model.v`](tb/models/axi_mem_model.v)
+  - [ ] Controlador `rtl/top/axi_mem_ctrl.v` (slave AXI4 da DMEM, MAS §12)
+  - [ ] TB-MEM `tb/unit_mem/tb_axi_mem_ctrl.v`: bursts de 1 a 16 beats, `WSTRB` parcial, leitura de 1 beat por ciclo, SLVERR fora do perfil e fora do range, alternância AR/AW, com e sem backpressure
 - [x] **Testbench sem CPU** ([`tb/unit_dma/tb_dma.v`](tb/unit_dma/tb_dma.v)): o BFM configura os registradores, o DMA lê a memória, alimenta o systolic array real e grava C de volta
-- [x] **Regressão e forma de onda** (§6.1)
+  - [ ] Trocar o `axi_mem_model` pelo `axi_mem_ctrl` no TB-DMA, no TB-RD e no TB-WR (o MAS §16.2 pede os três com o controlador) e rodar `make regress` de novo
+- [x] **Regressão** (§6.1): 168/168 na matriz §16.3 e 54/54 nos testes §16.4
+- [ ] **Forma de onda guardada** de uma operação completa para a apresentação (MAS §16.5). O `make wave` gera, mas em `build/`, que o git ignora
+- [ ] **Medir L e `W_OV`** no TB-MEM e no TB-DMA e atualizar as tabelas 7.2, 7.5 e 14.2 do MAS (MAS §18.3)
+- [ ] **Revisar e fazer merge** do PR #8 (acelerador v2 e TB-DMA com o systolic array real)
+
+### Entrega 4 — Integração Top-Level, Firmware e Verificação Automatizada (13/12/2026)
+- [ ] **CPU RV32I multiciclo na `main`**: já existe na branch `processor-rv32i` (FSM multiciclo, portas I/D valid/ready, `wfi`, testes em `tb/unit_cpu/`). Falta revisar e integrar. A branch saiu antes do merge do DMA, então o merge precisa de cuidado para não apagar `rtl/dma/` e `tb/unit_dma/`
+- [ ] **Crossbar AXI 2×2** (passo 9 do MAS, sugerido para Cedraz)
+  - [ ] `rtl/top/axi_xbar.v` (MAS §12.1)
+  - [ ] TB-XBAR `tb/unit_xbar/tb_axi_xbar.v`: decodificação, round-robin, travamento por burst, rota de W, IDs e DECERR com burst
+- [ ] **Adapter da CPU e top-level** (passo 10 do MAS, sugerido para Tássio e Cedraz)
+  - [ ] `rtl/top/cpu_axi_adapter.v`: Porta D da CPU → master M0
+  - [ ] `rtl/top/top.v` instanciando CPU, IMEM, crossbar, `axi_mem_ctrl`, DMA e acelerador
+- [ ] **Firmware** em [`sw/`](sw/) (responsável: a definir)
+  - [ ] Programa em C ou Assembly que configura `ADDR_A/B/C` e `DIM_M/N/K`, dá START com `IRQ_EN`, espera no `wfi` e confere o STATUS (§7)
+  - [ ] Linker script com `.data` e `.rodata` na DMEM (§10) e o binário `.hex` carregado na IMEM
+- [ ] **Teste de erro 4 do MAS §16.4**: `ADDR_C` sem slave tem que voltar DECERR do crossbar e `ERR_CODE = 4`. Só dá para testar com o crossbar no lugar
+- [ ] **UVM integrado** em [`tb/uvm/`](tb/uvm/) (responsável: a definir)
+  - [ ] Carrega parâmetros e estímulos de várias dimensões e valores, a partir do `model/golden.py`
+  - [ ] Compara C com o golden model automaticamente
+- [ ] **Forma de onda do sistema completo**: a CPU configurando, o DMA movendo os dados, o systolic array calculando e C sendo gravado (enunciado §7)
+- [ ] **Makefile** com os alvos do top e do UVM, para rodar tudo sem intervenção manual
 
 ---
 
