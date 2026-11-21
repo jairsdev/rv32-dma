@@ -1,22 +1,6 @@
 `timescale 1ns/1ps
 `default_nettype none
 
-// TB-DMA (MAS 16.2): operacao completa sem CPU.
-//   BFM (papel da CPU) -> S1 do dma
-//   M1 do dma -> axi_checker -> axi_rand_stall -> axi_mem_model (DMEM)
-//   sideband do dma <-> accel_model (acelerador v2)
-// A DMEM e carregada de dmem.hex (model/golden.py) e C e comparado com
-// c_expected.hex. Cada palavra de C tem de ser gravada exatamente uma vez (H7)
-// e nenhuma outra palavra da DMEM pode mudar.
-//
-// Parametros (-P): ARRAY_SIZE, PINGPONG, MAX_BURST
-// Plusargs:
-//   +DMEM=<arq> +CEXP=<arq> +M=<m> +K=<k> +N=<n>   vetores e dimensoes
-//   +TEST=<n>   0 = operacao normal; 1 a 9 = testes de erro/dreno do MAS 16.4
-//   +STALL +SEED=<s>   backpressure aleatoria no M1
-//   +SR_STEP=<n>       passo da varredura do teste 6 (default 1)
-//   +VCD=<arq>         grava a forma de onda
-//   +TRACE             imprime os AR/AW aceitos
 module tb_dma;
 
     parameter ARRAY_SIZE = 4;
@@ -47,9 +31,7 @@ module tb_dma;
     reg        stall_en = 1'b0;
     reg [31:0] seed = 32'd1;
 
-    // =================================================================
-    // S1: BFM -> dma_regs
-    // =================================================================
+    // S1: o BFM faz o papel da CPU e acessa os registradores do DMA
     wire [1:0]  s_awid, s_bid, s_arid, s_rid;
     wire [31:0] s_awaddr, s_wdata, s_araddr, s_rdata;
     wire [7:0]  s_awlen, s_arlen;
@@ -83,9 +65,8 @@ module tb_dma;
         .rready(s_rready)
     );
 
-    // =================================================================
-    // M1: dma -> checker -> stall -> memoria
-    // =================================================================
+    // M1: o master do DMA passa pelo checker e pelo gerador de backpressure
+    // antes de chegar na memoria
     wire [0:0]  m_awid, m_bid, m_arid, m_rid;
     wire [31:0] m_awaddr, m_wdata, m_araddr, m_rdata;
     wire [7:0]  m_awlen, m_arlen;
@@ -139,6 +120,8 @@ module tb_dma;
         .s_rvalid(d_rvalid), .s_rready(d_rready)
     );
 
+    // Memoria comportamental. Quando o axi_mem_ctrl (passo 2 do MAS) ficar
+    // pronto, ele entra aqui no lugar deste modelo.
     axi_mem_model #(.ID_W(1)) u_mem (
         .clk(clk), .rst_n(rst_n), .w_first(1'b0),
         .awid(d_awid), .awaddr(d_awaddr), .awlen(d_awlen), .awsize(d_awsize),
@@ -151,9 +134,6 @@ module tb_dma;
         .rready(d_rready)
     );
 
-    // =================================================================
-    // Acelerador
-    // =================================================================
     wire          buf_a_we, buf_b_we, buf_bank;
     wire [IW-1:0] buf_row;
     wire [WW-1:0] buf_word;
@@ -164,7 +144,8 @@ module tb_dma;
     wire [31:0]   c_rdata;
     wire          irq;
 
-    accel_model #(
+    // O systolic array de verdade (rtl/accel)
+    accel #(
         .ARRAY_SIZE (T),
         .PINGPONG   (PINGPONG)
     ) u_acc (
@@ -191,9 +172,6 @@ module tb_dma;
         .c_rdata    (c_rdata)
     );
 
-    // =================================================================
-    // DUT
-    // =================================================================
     dma #(
         .ARRAY_SIZE (T),
         .PINGPONG   (PINGPONG),
@@ -243,13 +221,10 @@ module tb_dma;
         .c_rdata    (c_rdata)
     );
 
-    // =================================================================
-    // Monitores
-    // =================================================================
-    // STATUS.BUSY interno (para os testes de dreno)
+    // BUSY interno do DMA, usado nos testes de dreno
     wire ctrl_busy = u_dma.ctrl_busy;
 
-    // H6 visto de fora: nenhum handshake de AR/AW com o DMA parado
+    // H6 olhando de fora: com o DMA parado nenhum AR/AW pode ser aceito
     integer errors = 0;
     always @(posedge clk)
         if (rst_n && !ctrl_busy && ((m_arvalid && m_arready) || (m_awvalid && m_awready))) begin
@@ -257,7 +232,35 @@ module tb_dma;
             $display("[%0t] FALHA H6: AR/AW aceito com BUSY = 0", $time);
         end
 
-    // +TRACE: imprime cada AR/AW aceito (conferencia da tabela 8.3 do MAS)
+    // Protocolo entre DMA e acelerador. Essas checagens ficavam dentro do
+    // accel_model; com o acelerador real elas passam a ser feitas aqui.
+    integer side_errors = 0;
+    reg     mon_bank = 1'b0;
+
+    task side_fail;
+        input [8*64-1:0] msg;
+        begin
+            side_errors = side_errors + 1;
+            $display("[%0t] FALHA sideband: %0s", $time, msg);
+        end
+    endtask
+
+    always @(posedge clk)
+        if (rst_n) begin
+            if (tile_start && acc_busy)
+                side_fail("tile_start com a malha ocupada");
+            if (tile_start && !acc_busy)
+                mon_bank <= (PINGPONG != 0) ? tile_bank : 1'b0;
+            if ((buf_a_we || buf_b_we) && acc_busy
+                    && (((PINGPONG != 0) ? buf_bank : 1'b0) == mon_bank))
+                side_fail("escrita no banco que a malha esta usando");
+            if (c_release && !c_valid)
+                side_fail("c_release sem c_valid");
+            if (PINGPONG == 0 && tile_start && first_k && c_valid)
+                side_fail("first_k com o C anterior ainda nao gravado");
+        end
+
+    // +TRACE mostra cada AR/AW aceito, util para conferir a tabela 8.3 do MAS
     reg trace = 1'b0;
     always @(posedge clk)
         if (trace && rst_n) begin
@@ -265,9 +268,6 @@ module tb_dma;
             if (m_awvalid && m_awready) $display("TRACE AW %h %0d", m_awaddr, m_awlen);
         end
 
-    // =================================================================
-    // Dados de referencia
-    // =================================================================
     reg [31:0] mem_init [0:16383];
     reg [31:0] cexp     [0:4095];
     integer    dim_m = 6, dim_n = 7, dim_k = 5;
@@ -276,9 +276,6 @@ module tb_dma;
     reg [31:0] rd;
     reg [1:0]  resp;
 
-    // ---------------------------------------------------------------
-    // Tarefas de apoio
-    // ---------------------------------------------------------------
     task fail;
         input [8*80-1:0] msg;
         begin
@@ -318,13 +315,12 @@ module tb_dma;
         end
     endtask
 
-    // Escreve lixo nos bytes de preenchimento das linhas de A e B (colunas
-    // entre a dimensao e o stride). O golden grava zeros ali; com lixo, o
-    // teste prova que o resultado nao depende desses zeros.
-    // Obs.: no resultado final a mascara de padding do dma_rd_engine e
-    // redundante (lixo de A alem de K multiplica linhas de B zeradas em R_ZERO,
-    // e lixo de B alem de N cai em colunas de C que nao sao gravadas). A
-    // mascara em si (MAS 10.1) e verificada no TB-RD.
+    // Suja os bytes de preenchimento das linhas de A e B (entre a dimensao e o
+    // stride). O golden deixa zero ali; com lixo, da para ver que o resultado
+    // nao depende desses zeros. No resultado final a mascara de padding do
+    // dma_rd_engine acaba sendo redundante (o lixo de A alem de K multiplica
+    // linhas de B zeradas em R_ZERO, e o lixo de B alem de N cai em colunas de C
+    // que nao sao gravadas), por isso a mascara em si e testada no TB-RD.
     task poison_padding;
         input [31:0]  base;
         input integer rows, cols;
@@ -343,7 +339,7 @@ module tb_dma;
         end
     endtask
 
-    // Restaura a DMEM e zera os contadores de escrita
+    // Volta a DMEM ao estado inicial e zera os contadores de escrita
     task restore_mem;
         integer i;
         begin
@@ -354,7 +350,6 @@ module tb_dma;
         end
     endtask
 
-    // Espera a interrupcao (com limite)
     task wait_irq;
         integer guard;
         begin
@@ -367,7 +362,6 @@ module tb_dma;
         end
     endtask
 
-    // Espera o DMA parar (BUSY = 0)
     task wait_idle;
         integer guard;
         begin
@@ -380,9 +374,8 @@ module tb_dma;
         end
     endtask
 
-    // Confere C e o resto da DMEM
-    //   strict = 1: cada palavra de C escrita exatamente uma vez (H7) e
-    //   nenhuma outra palavra escrita ou alterada
+    // Confere C contra o golden. Com strict = 1 tambem exige que cada palavra
+    // de C tenha sido gravada uma unica vez (H7) e que nada fora de C mudou.
     task check_c;
         input [31:0]  c_base;
         input integer m, n;
@@ -418,11 +411,12 @@ module tb_dma;
         end
     endtask
 
-    // Operacao completa: configura, START, espera irq, confere STATUS
+    // Uma operacao inteira: configura, da START, espera o irq e confere o STATUS.
+    // exp_code = 0 quer dizer que a operacao tem que terminar sem erro.
     task run_op;
         input [31:0]  a, b, c;
         input integer m, n, k;
-        input [3:0]   exp_code;        // 0 = sucesso
+        input [3:0]   exp_code;
         output [31:0] cycles;
         begin
             configure(a, b, c, m, n, k);
@@ -441,7 +435,7 @@ module tb_dma;
                 end
             end
             reg_rd(R_CYCLES, cycles);
-            reg_wr(R_STATUS, 32'h0000_0006);        // W1C DONE e ERROR
+            reg_wr(R_STATUS, 32'h0000_0006);        // limpa DONE e ERROR (W1C)
             @(posedge clk);
             if (irq !== 1'b0) fail("irq nao caiu com W1C");
         end
@@ -449,7 +443,7 @@ module tb_dma;
 
     integer n_sr_abort = 0, n_sr_late = 0;
 
-    // Dispara uma operacao e da SOFT_RESET depois de "delay" ciclos
+    // Dispara uma operacao e manda SOFT_RESET depois de "delay" ciclos
     task run_soft_reset;
         input integer delay;
         begin
@@ -462,13 +456,13 @@ module tb_dma;
             if (!u_chk_m1.idle) fail("transacao AXI pendurada depois do dreno");
             reg_rd(R_STATUS, rd);
             if (rd == 32'h0000_0002) begin
-                // A operacao terminou antes de o SOFT_RESET chegar (o pulso
-                // caiu em IDLE e nao tem efeito): DONE e irq sao legitimos
+                // A operacao acabou antes do SOFT_RESET chegar. O pulso caiu em
+                // IDLE e nao faz nada, entao DONE e irq estao certos.
                 if (irq !== 1'b1) fail("DONE sem irq");
                 n_sr_late = n_sr_late + 1;
                 reg_wr(R_STATUS, 32'h2);
             end else if (rd == 32'd0) begin
-                // Abortada: sem DONE, sem ERROR e sem irq
+                // Abortou: nem DONE, nem ERROR, nem irq
                 if (irq !== 1'b0) fail("irq subiu depois de SOFT_RESET");
                 n_sr_abort = n_sr_abort + 1;
             end else begin
@@ -478,9 +472,6 @@ module tb_dma;
         end
     endtask
 
-    // =================================================================
-    // Sequencia principal
-    // =================================================================
     integer    test = 0;
     integer    sr_step = 1;
     integer    i;
@@ -519,10 +510,9 @@ module tb_dma;
         if (info !== {3'd0, (PINGPONG != 0), 4'd2, 8'd32, 8'd8, 8'(T)}) fail("INFO");
 
         case (test)
-            // ---------------------------------------------------------
             0, 9: begin
-                // Operacao normal (9 = gravacao unica, mesmo teste: o
-                // check_c estrito confere H7 em toda execucao)
+                // Operacao normal. O teste 9 (gravacao unica) e o mesmo, porque o
+                // check_c estrito ja confere H7 em toda execucao.
                 run_op(DEF_A, DEF_B, DEF_C, dim_m, dim_n, dim_k, 4'd0, cycles);
                 reg_rd(R_CYC_COMPUTE, cyc_compute);
                 check_c(DEF_C, dim_m, dim_n, 1'b1);
@@ -532,38 +522,36 @@ module tb_dma;
                     fail("CYC_COMPUTE diferente de tiles * blocos * (3T - 1)");
             end
 
-            // ---------------------------------------------------------
-            1: begin   // DIM_K = 0 -> ERR_CODE 1, sem AR/AW
+            1: begin   // DIM_K = 0: ERR_CODE 1 e nenhum acesso a memoria
                 ar0 = u_chk_m1.ar_count; aw0 = u_chk_m1.aw_count;
                 run_op(DEF_A, DEF_B, DEF_C, dim_m, dim_n, 0, 4'd1, cycles);
                 if (u_chk_m1.ar_count != ar0 || u_chk_m1.aw_count != aw0)
                     fail("acesso a memoria com dimensao zero");
             end
 
-            2: begin   // ADDR_B desalinhado -> ERR_CODE 2, sem AR/AW
+            2: begin   // ADDR_B desalinhado: ERR_CODE 2 e nenhum acesso a memoria
                 ar0 = u_chk_m1.ar_count; aw0 = u_chk_m1.aw_count;
                 run_op(DEF_A, 32'h1000_4002, DEF_C, dim_m, dim_n, dim_k, 4'd2, cycles);
                 if (u_chk_m1.ar_count != ar0 || u_chk_m1.aw_count != aw0)
                     fail("acesso a memoria com endereco desalinhado");
             end
 
-            3, 7: begin   // ADDR_A fora da DMEM -> SLVERR -> ERR_CODE 3
+            3, 7: begin   // ADDR_A fora da DMEM: SLVERR e ERR_CODE 3
                 run_op(32'h1002_0000, DEF_B, DEF_C, dim_m, dim_n, dim_k, 4'd3, cycles);
                 if (!u_chk_m1.idle) fail("transacao pendurada depois do erro");
                 if (test == 7) begin
-                    // Nova operacao depois do erro: prova o reset dos bancos
+                    // uma operacao boa logo depois do erro prova que os bancos foram zerados
                     restore_mem;
                     run_op(DEF_A, DEF_B, DEF_C, dim_m, dim_n, dim_k, 4'd0, cycles);
                     check_c(DEF_C, dim_m, dim_n, 1'b1);
                 end
             end
 
-            4: begin   // ADDR_C sem slave -> DECERR -> ERR_CODE 4
+            4: begin   // ADDR_C sem slave: DECERR e ERR_CODE 4
                 run_op(DEF_A, DEF_B, 32'h2000_0000, dim_m, dim_n, dim_k, 4'd4, cycles);
                 if (!u_chk_m1.idle) fail("transacao pendurada depois do erro");
             end
 
-            // ---------------------------------------------------------
             5: begin   // SOFT_RESET no meio da operacao
                 run_op(DEF_A, DEF_B, DEF_C, dim_m, dim_n, dim_k, 4'd0, cycles);
                 restore_mem;
@@ -573,13 +561,13 @@ module tb_dma;
                 repeat (10) @(posedge clk);
                 reg_rd(R_CYCLES, cycles2);
                 if (cycles !== cycles2) fail("CYCLES nao congelou depois do SOFT_RESET");
-                // E a operacao seguinte sai certa
+                // e a operacao seguinte tem que sair certa
                 restore_mem;
                 run_op(DEF_A, DEF_B, DEF_C, dim_m, dim_n, dim_k, 4'd0, cycles);
                 check_c(DEF_C, dim_m, dim_n, 1'b1);
             end
 
-            6: begin   // Varredura do SOFT_RESET em ciclos sucessivos
+            6: begin   // SOFT_RESET em ciclos sucessivos, cobrindo todos os estados
                 run_op(DEF_A, DEF_B, DEF_C, dim_m, dim_n, dim_k, 4'd0, cycles);
                 for (i = 0; i <= cycles; i = i + sr_step)
                     run_soft_reset(i);
@@ -597,8 +585,8 @@ module tb_dma;
                 reg_wr(R_CTRL, CTRL_SOFT_RESET | CTRL_IRQ_EN);      // em IDLE
                 repeat (5) @(posedge clk);
                 if (ctrl_busy) fail("SOFT_RESET em IDLE tirou o DMA de IDLE");
-                // Em CHECK: o pulso precisa cair no unico ciclo de CHECK, o
-                // que uma escrita AXI nao consegue; o TB forca o sinal interno.
+                // CHECK dura um ciclo so, e uma escrita AXI nao consegue acertar
+                // esse ciclo. Por isso o TB forca o sinal interno.
                 fork
                     reg_wr(R_CTRL, CTRL_START | CTRL_IRQ_EN);
                     begin
@@ -625,8 +613,8 @@ module tb_dma;
         repeat (5) @(posedge clk);
         if (u_chk_m1.violations != 0 || u_chk_s1.violations != 0)
             fail("violacoes do axi_checker");
-        if (u_acc.errors != 0)
-            fail("erros detectados no modelo do acelerador");
+        if (side_errors != 0)
+            fail("protocolo entre DMA e acelerador");
 `ifdef DMA_ASSERT
         if (u_dma.u_assert.n_fail != 0)
             fail("assercoes H1-H6 falharam");

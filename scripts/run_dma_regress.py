@@ -1,18 +1,4 @@
 #!/usr/bin/env python3
-"""Regressao do DMA (MAS secao 16.3 e 16.4).
-
-Matriz 16.3: casos 1 a 6 + 16x16x16  x  T = 2, 4, 8  x  PINGPONG = 0, 1
-             x  {sem backpressure, backpressure aleatoria com 3 sementes}
-             = 7 x 3 x 2 x 4 = 168 execucoes do tb_dma.
-Testes 16.4: TEST = 1 ... 9 para T = 2, 4, 8 e PINGPONG = 0, 1 (caso 3).
-Criterio 16.5: PINGPONG = 1 com CYCLES <= PINGPONG = 0 em todos os casos sem
-backpressure, e estritamente menor quando ha mais de um bloco.
-
-Uso:
-    python3 scripts/run_dma_regress.py            # tudo
-    python3 scripts/run_dma_regress.py --quick    # so sem backpressure, sem 16.4
-    python3 scripts/run_dma_regress.py --jobs 8
-"""
 
 import argparse
 import concurrent.futures as cf
@@ -36,7 +22,7 @@ CASES = [
 ]
 TS = [2, 4, 8]
 PPS = [0, 1]
-STALL_SEEDS = [None, 1, 2, 3]       # None = sem backpressure
+STALL_SEEDS = [None, 1, 2, 3]       # None roda sem backpressure
 ERROR_TESTS = list(range(1, 10))
 
 TB_FILES = [
@@ -45,10 +31,13 @@ TB_FILES = [
     "tb/common/axi_rand_stall.v",
     "tb/common/axi_master_bfm.v",
     "tb/models/axi_mem_model.v",
-    "tb/models/accel_model.v",
+    "rtl/accel/accel.v",
+    "rtl/accel/pe.v",
 ]
 
 FAIL_PATTERNS = re.compile(r"FAIL|FALHA|VIOLACAO|ERRO|ERROR|timeout", re.IGNORECASE)
+
+SIM = "icarus"
 
 
 def rtl_files():
@@ -70,20 +59,36 @@ def gen_vectors(name, args, seed):
     return out
 
 
+# Compila uma vez por configuracao e devolve o que o sim() precisa para rodar:
+# o .vvp no Icarus ou o diretorio do snapshot no Xcelium.
 def compile_tb(t, pp):
-    out = os.path.join(BUILD, f"tb_dma_T{t}_PP{pp}.vvp")
-    r = run(["iverilog", "-g2012", "-Wall", "-DDMA_ASSERT", "-I", "rtl/common",
-             "-P", f"tb_dma.ARRAY_SIZE={t}", "-P", f"tb_dma.PINGPONG={pp}",
-             "-o", out, *TB_FILES, *rtl_files()])
-    warnings = [l for l in r.stderr.splitlines() if "timescale" not in l and l.strip()]
-    if r.returncode != 0 or warnings:
-        raise RuntimeError(f"compilacao T={t} PP={pp}:\n" + "\n".join(warnings))
-    return out
+    if SIM == "xcelium":
+        lib = os.path.join(BUILD, f"xcelium_T{t}_PP{pp}")
+        r = run(["xrun", "-q", "-sv", "-elaborate", "-define", "DMA_ASSERT",
+                 "-incdir", "rtl/common", "-top", "tb_dma",
+                 "-defparam", f"tb_dma.ARRAY_SIZE={t}", "-defparam", f"tb_dma.PINGPONG={pp}",
+                 "-xmlibdirname", lib, "-l", lib + ".log",
+                 *TB_FILES, *rtl_files()])
+        msgs = [l for l in (r.stdout + r.stderr).splitlines() if re.search(r"\*[WEF],", l)]
+    else:
+        lib = os.path.join(BUILD, f"tb_dma_T{t}_PP{pp}.vvp")
+        r = run(["iverilog", "-g2012", "-Wall", "-DDMA_ASSERT", "-I", "rtl/common",
+                 "-P", f"tb_dma.ARRAY_SIZE={t}", "-P", f"tb_dma.PINGPONG={pp}",
+                 "-o", lib, *TB_FILES, *rtl_files()])
+        msgs = [l for l in r.stderr.splitlines() if "timescale" not in l and l.strip()]
+    # aviso conta como erro: o criterio da equipe e compilar limpo
+    if r.returncode != 0 or msgs:
+        raise RuntimeError(f"compilacao T={t} PP={pp} ({SIM}):\n" + "\n".join(msgs[:20]))
+    return lib
 
 
-def sim(vvp, plusargs):
+def sim(lib, plusargs):
+    if SIM == "xcelium":
+        cmd = ["xrun", "-q", "-R", "-xmlibdirname", lib, "-nolog", *plusargs]
+    else:
+        cmd = ["vvp", "-n", lib, *plusargs]
     try:
-        r = run(["vvp", "-n", vvp, *plusargs], timeout=1800)
+        r = run(cmd, timeout=1800)
     except subprocess.TimeoutExpired:
         return False, None, "timeout"
     out = r.stdout + r.stderr
@@ -96,18 +101,22 @@ def sim(vvp, plusargs):
 
 
 def main():
-    ap = argparse.ArgumentParser()
+    global SIM
+    ap = argparse.ArgumentParser(description="Regressao do TB-DMA (MAS 16.3, 16.4 e 16.5)")
     ap.add_argument("--quick", action="store_true",
-                    help="so a matriz sem backpressure, sem os testes 16.4")
+                    help="so a matriz sem backpressure, sem os testes da 16.4")
     ap.add_argument("--jobs", type=int, default=os.cpu_count() or 4)
+    ap.add_argument("--sim", choices=["icarus", "xcelium"], default="icarus",
+                    help="simulador (default: icarus)")
     args = ap.parse_args()
+    SIM = args.sim
 
     os.makedirs(BUILD, exist_ok=True)
 
-    print("Compilando o tb_dma (6 configuracoes)...")
-    vvps = {(t, pp): compile_tb(t, pp) for t in TS for pp in PPS}
+    print(f"Compilando o tb_dma nas 6 configuracoes ({SIM})...")
+    libs = {(t, pp): compile_tb(t, pp) for t in TS for pp in PPS}
 
-    print("Gerando vetores com model/golden.py...")
+    print("Gerando os vetores com model/golden.py...")
     seeds = [None] if args.quick else STALL_SEEDS
     vec = {}
     for name, gargs, *_ in CASES:
@@ -116,7 +125,7 @@ def main():
             vec[(name, vs)] = gen_vectors(name, gargs, vs)
 
     jobs = []
-    # Matriz 16.3
+    # matriz da 16.3: todos os casos em todas as configuracoes
     for name, _, m, k, n in CASES:
         for t in TS:
             for pp in PPS:
@@ -127,19 +136,19 @@ def main():
                             f"+M={m}", f"+K={k}", f"+N={n}", "+TEST=0"]
                     if s is not None:
                         plus += ["+STALL", f"+SEED={s}"]
-                    jobs.append(("16.3", name, t, pp, s, 0, vvps[(t, pp)], plus))
-    # Testes 16.4
+                    jobs.append(("16.3", name, t, pp, s, 0, libs[(t, pp)], plus))
+    # testes de erro e dreno da 16.4, sempre com o caso 3
     if not args.quick:
         d = vec[("caso3", 1)]
         for t in TS:
             for pp in PPS:
                 for tst in ERROR_TESTS:
-                    step = {2: 4, 4: 2, 8: 1}[t]   # varredura do teste 6
+                    step = {2: 4, 4: 2, 8: 1}[t]   # passo da varredura do teste 6
                     plus = [f"+DMEM={d}/dmem.hex", f"+CEXP={d}/c_expected.hex",
                             "+M=6", "+K=5", "+N=7", f"+TEST={tst}", f"+SR_STEP={step}"]
-                    jobs.append(("16.4", "caso3", t, pp, None, tst, vvps[(t, pp)], plus))
+                    jobs.append(("16.4", "caso3", t, pp, None, tst, libs[(t, pp)], plus))
 
-    print(f"Executando {len(jobs)} simulacoes com {args.jobs} processos...")
+    print(f"Rodando {len(jobs)} simulacoes com {args.jobs} processos...")
     results = []
     with cf.ThreadPoolExecutor(max_workers=args.jobs) as ex:
         futs = {ex.submit(sim, j[6], j[7]): j for j in jobs}
@@ -150,7 +159,6 @@ def main():
             if not ok:
                 print(f"  FAIL {j[0]} {j[1]} T={j[2]} PP={j[3]} seed={j[4]} TEST={j[5]}\n    {msg}")
 
-    # ---------------- Relatorio ----------------
     fails = [r for r in results if not r[1]]
     n163 = [r for r in results if r[0][0] == "16.3"]
     n164 = [r for r in results if r[0][0] == "16.4"]
@@ -159,7 +167,8 @@ def main():
     if n164:
         print(f"Testes 16.4: {sum(r[1] for r in n164)}/{len(n164)} PASS")
 
-    # CYCLES sem backpressure: PINGPONG 0 x 1
+    # Criterio 16.5: sem backpressure, PINGPONG = 1 nunca pode ser mais lento que
+    # PINGPONG = 0, e tem que ser mais rapido quando ha mais de um bloco
     cyc = {(r[0][1], r[0][2], r[0][3]): r[2]
            for r in n163 if r[0][4] is None and r[1]}
     print()
