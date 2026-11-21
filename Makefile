@@ -10,8 +10,11 @@ SIM ?= icarus
 T   ?= 4
 PP  ?= 1
 
-RTL   := $(shell cat rtl/dma/dma.f)
-ACCEL := rtl/accel/accel.v rtl/accel/pe.v
+RTL      := $(shell cat rtl/dma/dma.f)
+ACCEL    := rtl/accel/accel.v rtl/accel/pe.v
+# controlador da DMEM: os nossos arquivos vem antes dos copiados, que nao tem
+# `timescale e herdam o deles
+MEM_CTRL := $(shell cat rtl/top/axi_mem_ctrl.f)
 TB_COMMON := tb/common/axi_checker.v tb/common/axi_rand_stall.v \
              tb/common/axi_master_bfm.v tb/models/axi_mem_model.v
 
@@ -37,6 +40,13 @@ lint: | $(BUILD)
 	done; done
 	@echo "lint Verilog-2005 sem assercoes"
 	@iverilog -g2005 -Wall -I rtl/common -s dma -o $(BUILD)/lint05.vvp $(RTL) $(CHECK_CLEAN)
+	@for id in 1 2; do \
+	  echo "lint axi_mem_ctrl ID_W=$$id"; \
+	  $(IVERILOG) -s axi_mem_ctrl -P axi_mem_ctrl.ID_W=$$id \
+	    -o $(BUILD)/lint_mem.vvp $(MEM_CTRL) $(CHECK_CLEAN) || exit 1; \
+	done
+	@echo "lint axi_mem_ctrl Verilog-2005 sem assercoes"
+	@iverilog -g2005 -Wall -I rtl/common -s axi_mem_ctrl -o $(BUILD)/lint_mem05.vvp $(MEM_CTRL) $(CHECK_CLEAN)
 	@echo "LINT: PASS"
 
 selftest: | $(BUILD)
