@@ -1,36 +1,30 @@
-# Simulacao e verificacao do DMA (MAS secoes 16 e 17).
-#
-#   make lint      compila o DMA nas 6 configuracoes (T x PINGPONG), -Wall,
-#                  com assercoes, e em Verilog-2005 puro sem assercoes
-#   make selftest  autoteste do axi_checker
-#   make tb_regs   TB-REGS
-#   make tb_rd     TB-RD  (T = 2, 4, 8; MAX_BURST = 16, 1; com e sem stall)
-#   make tb_wr     TB-WR  (T = 2, 4, 8; MAX_BURST = 16, 2; stall; W antes de AW)
-#   make tb_dma    TB-DMA, caso 6x5x7 (T e PP: make tb_dma T=8 PP=0)
-#   make unit      selftest + tb_regs + tb_rd + tb_wr
-#   make regress   matriz 16.3 (168 execucoes) + testes 16.4 + criterio 16.5
-#   make wave      forma de onda de uma operacao completa em build/wave_dma.vcd
-#   make clean
-
 IVERILOG := iverilog -g2012 -Wall -DDMA_ASSERT -I rtl/common
 VVP      := vvp -n
+XRUN_ACC := xrun -q -sv
+XRUN     := $(XRUN_ACC) -define DMA_ASSERT -incdir rtl/common
 BUILD    := build
 PYTHON   := python3
 
-T  ?= 4
-PP ?= 1
+# simulador dos alvos tb_accel, tb_dma, wave e regress: icarus ou xcelium
+SIM ?= icarus
+T   ?= 4
+PP  ?= 1
 
-RTL := $(shell cat rtl/dma/dma.f)
+RTL   := $(shell cat rtl/dma/dma.f)
+ACCEL := rtl/accel/accel.v rtl/accel/pe.v
 TB_COMMON := tb/common/axi_checker.v tb/common/axi_rand_stall.v \
              tb/common/axi_master_bfm.v tb/models/axi_mem_model.v
 
-# Filtra os avisos de timescale dos arquivos sem `timescale (nenhum aqui) e
-# falha se sobrar qualquer outra mensagem do compilador
+# Joga fora os avisos de timescale e falha se sobrar qualquer outra mensagem
 CHECK_CLEAN = 2>&1 | grep -v timescale | tee /dev/stderr | (! grep -q .)
 
-.PHONY: all lint selftest tb_regs tb_rd tb_wr tb_dma unit regress wave clean
+SMOKE      := $(BUILD)/vec/smoke
+SMOKE_ARGS := +DMEM=$(SMOKE)/dmem.hex +CEXP=$(SMOKE)/c_expected.hex +M=6 +K=5 +N=7
+TB_DMA_SRC := tb/unit_dma/tb_dma.v $(TB_COMMON) $(ACCEL) $(RTL)
 
-all: lint unit tb_dma
+.PHONY: all lint selftest tb_regs tb_rd tb_wr tb_accel tb_dma unit regress wave clean
+
+all: lint unit tb_accel tb_dma
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -74,27 +68,57 @@ tb_wr: | $(BUILD)
 	  done; \
 	done; done
 
-$(BUILD)/vec/smoke/c_expected.hex: model/golden.py | $(BUILD)
-	$(PYTHON) model/golden.py --case 3 --seed 1 --out-dir $(BUILD)/vec/smoke > /dev/null
+# TB-ACC nas 6 configuracoes (T = 2, 4, 8 x PINGPONG = 0, 1)
+tb_accel: | $(BUILD)
+ifeq ($(SIM),xcelium)
+	@for t in 2 4 8; do for pp in 0 1; do \
+	  $(XRUN_ACC) -top tb_accel -defparam tb_accel.ARRAY_SIZE=$$t -defparam tb_accel.PINGPONG=$$pp \
+	    -xmlibdirname $(BUILD)/xcelium_accel -l $(BUILD)/tb_accel.log \
+	    tb/unit_accel/tb_accel.v $(ACCEL) > /dev/null; \
+	  grep -hE "TB_ACCEL T=.*(PASS|FAIL)|ERRO|\*[EFW]," $(BUILD)/tb_accel.log; \
+	done; done
+else
+	@for t in 2 4 8; do for pp in 0 1; do \
+	  $(IVERILOG) -P tb_accel.ARRAY_SIZE=$$t -P tb_accel.PINGPONG=$$pp \
+	    -o $(BUILD)/tb_accel.vvp tb/unit_accel/tb_accel.v $(ACCEL) || exit 1; \
+	  $(VVP) $(BUILD)/tb_accel.vvp | grep -E "TB_ACCEL T=.*(PASS|FAIL)|ERRO"; \
+	done; done
+endif
 
-tb_dma: $(BUILD)/vec/smoke/c_expected.hex
-	$(IVERILOG) -P tb_dma.ARRAY_SIZE=$(T) -P tb_dma.PINGPONG=$(PP) -o $(BUILD)/tb_dma.vvp \
-	  tb/unit_dma/tb_dma.v $(TB_COMMON) tb/models/accel_model.v $(RTL)
-	$(VVP) $(BUILD)/tb_dma.vvp +DMEM=$(BUILD)/vec/smoke/dmem.hex \
-	  +CEXP=$(BUILD)/vec/smoke/c_expected.hex +M=6 +K=5 +N=7 | grep -E "RESULT|PASS|FAIL|FALHA"
+$(SMOKE)/c_expected.hex: model/golden.py | $(BUILD)
+	$(PYTHON) model/golden.py --case 3 --seed 1 --out-dir $(SMOKE) > /dev/null
+
+# TB-DMA com o caso 6x5x7 (mude a configuracao com T=... PP=...)
+tb_dma: $(SMOKE)/c_expected.hex
+ifeq ($(SIM),xcelium)
+	$(XRUN) -top tb_dma -defparam tb_dma.ARRAY_SIZE=$(T) -defparam tb_dma.PINGPONG=$(PP) \
+	  -xmlibdirname $(BUILD)/xcelium_dma -l $(BUILD)/tb_dma.log $(TB_DMA_SRC) $(SMOKE_ARGS) > /dev/null
+	@grep -E "RESULT|PASS|FAIL|FALHA|\*[EFW]," $(BUILD)/tb_dma.log
+else
+	$(IVERILOG) -P tb_dma.ARRAY_SIZE=$(T) -P tb_dma.PINGPONG=$(PP) -o $(BUILD)/tb_dma.vvp $(TB_DMA_SRC)
+	$(VVP) $(BUILD)/tb_dma.vvp $(SMOKE_ARGS) | grep -E "RESULT|PASS|FAIL|FALHA"
+endif
 
 unit: selftest tb_regs tb_rd tb_wr
 
 regress: | $(BUILD)
-	$(PYTHON) scripts/run_dma_regress.py
+	$(PYTHON) scripts/run_dma_regress.py --sim $(SIM)
 
-wave: $(BUILD)/vec/smoke/c_expected.hex
-	$(IVERILOG) -P tb_dma.ARRAY_SIZE=$(T) -P tb_dma.PINGPONG=$(PP) -o $(BUILD)/tb_dma.vvp \
-	  tb/unit_dma/tb_dma.v $(TB_COMMON) tb/models/accel_model.v $(RTL)
-	$(VVP) $(BUILD)/tb_dma.vvp +DMEM=$(BUILD)/vec/smoke/dmem.hex \
-	  +CEXP=$(BUILD)/vec/smoke/c_expected.hex +M=6 +K=5 +N=7 \
-	  +VCD=$(BUILD)/wave_dma.vcd | grep -E "PASS|FAIL"
+# Forma de onda de uma operacao completa: SHM para o SimVision no Xcelium,
+# VCD para o GTKWave no Icarus
+wave: $(SMOKE)/c_expected.hex
+ifeq ($(SIM),xcelium)
+	@printf 'database -open $(BUILD)/wave_dma -shm -default\nprobe -create tb_dma -depth all -all\nrun\nexit\n' > $(BUILD)/wave.tcl
+	$(XRUN) -access +r -top tb_dma -defparam tb_dma.ARRAY_SIZE=$(T) -defparam tb_dma.PINGPONG=$(PP) \
+	  -xmlibdirname $(BUILD)/xcelium_wave -l $(BUILD)/wave.log -input $(BUILD)/wave.tcl \
+	  $(TB_DMA_SRC) $(SMOKE_ARGS) > /dev/null
+	@grep -E "PASS|FAIL" $(BUILD)/wave.log
+	@echo "Forma de onda: $(BUILD)/wave_dma.shm (abrir com: simvision $(BUILD)/wave_dma.shm)"
+else
+	$(IVERILOG) -P tb_dma.ARRAY_SIZE=$(T) -P tb_dma.PINGPONG=$(PP) -o $(BUILD)/tb_dma.vvp $(TB_DMA_SRC)
+	$(VVP) $(BUILD)/tb_dma.vvp $(SMOKE_ARGS) +VCD=$(BUILD)/wave_dma.vcd | grep -E "PASS|FAIL"
 	@echo "Forma de onda: $(BUILD)/wave_dma.vcd (abrir com gtkwave)"
+endif
 
 clean:
 	rm -rf $(BUILD)
