@@ -1,7 +1,8 @@
 `timescale 1ns/1ps
 `default_nettype none
 
-// TB-RD (MAS 16.2): dma_rd_engine + axi_rand_stall + axi_mem_model.
+// TB-RD (MAS 16.2): dma_rd_engine + axi_rand_stall + DMEM (axi_mem_ctrl com
+// MEM_CTRL definido, axi_mem_model sem ele).
 // Entrega linhas em ciclos seguidos e confere, a cada rd_done:
 //   - a ordem dos rd_done (igual a dos comandos);
 //   - WPR palavras escritas no buffer certo (sel, bank, row);
@@ -148,8 +149,16 @@ module tb_dma_rd_engine;
         .s_rvalid(s_rvalid), .s_rready(s_rready)
     );
 
+    // DMEM: axi_mem_ctrl (MEM=ctrl, define MEM_CTRL) ou axi_mem_model (MEM=model)
+`ifdef MEM_CTRL
+    axi_mem_ctrl #(.ID_W(1)) u_mem (
+        .clk(clk), .rst_n(rst_n),
+    `define MEM_ARR u_mem.u_ram.mem
+`else
     axi_mem_model #(.ID_W(1)) u_mem (
         .clk(clk), .rst_n(rst_n), .w_first(1'b0),
+    `define MEM_ARR u_mem.mem
+`endif
         .awid(s_awid), .awaddr(s_awaddr), .awlen(s_awlen), .awsize(s_awsize),
         .awburst(s_awburst), .awvalid(s_awvalid), .awready(s_awready),
         .wdata(s_wdata), .wstrb(s_wstrb), .wlast(s_wlast), .wvalid(s_wvalid), .wready(s_wready),
@@ -188,7 +197,7 @@ module tb_dma_rd_engine;
                 col = 4 * w + l;
                 if (col < nbytes && col < T) begin
                     a    = addr + col;
-                    word = u_mem.mem[a[15:2]];
+                    word = `MEM_ARR[a[15:2]];
                     exp_word[8*l +: 8] = word[8*a[1:0] +: 8];
                 end
             end
@@ -272,7 +281,7 @@ module tb_dma_rd_engine;
         for (i = 0; i < 4 * T; i = i + 1) wcnt[i] = 0;
         #1;
         for (i = 0; i < 16384; i = i + 1)
-            u_mem.mem[i] = (i * 32'h9E37_79B1) ^ 32'hA5A5_5A5A;
+            `MEM_ARR[i] = (i * 32'h9E37_79B1) ^ 32'hA5A5_5A5A;
 
         repeat (3) @(posedge clk);
         rst_n = 1'b1;
@@ -342,4 +351,5 @@ module tb_dma_rd_engine;
 
 endmodule
 
+`undef MEM_ARR
 `default_nettype wire

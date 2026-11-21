@@ -120,10 +120,16 @@ module tb_dma;
         .s_rvalid(d_rvalid), .s_rready(d_rready)
     );
 
-    // Memoria comportamental. Quando o axi_mem_ctrl (passo 2 do MAS) ficar
-    // pronto, ele entra aqui no lugar deste modelo.
+    // DMEM: o axi_mem_ctrl de verdade (MEM=ctrl, define MEM_CTRL) ou a memoria
+    // comportamental tb/models/axi_mem_model.v (MEM=model). As duas tem as
+    // mesmas portas, menos o w_first do modelo.
+`ifdef MEM_CTRL
+    axi_mem_ctrl #(.ID_W(1)) u_mem (
+        .clk(clk), .rst_n(rst_n),
+`else
     axi_mem_model #(.ID_W(1)) u_mem (
         .clk(clk), .rst_n(rst_n), .w_first(1'b0),
+`endif
         .awid(d_awid), .awaddr(d_awaddr), .awlen(d_awlen), .awsize(d_awsize),
         .awburst(d_awburst), .awvalid(d_awvalid), .awready(d_awready),
         .wdata(d_wdata), .wstrb(d_wstrb), .wlast(d_wlast), .wvalid(d_wvalid), .wready(d_wready),
@@ -133,6 +139,23 @@ module tb_dma;
         .rid(d_rid), .rdata(d_rdata), .rresp(d_rresp), .rlast(d_rlast), .rvalid(d_rvalid),
         .rready(d_rready)
     );
+
+    // Acesso direto a memoria (MEM_ARR) e contagem de escritas por palavra
+    // (MEM_WRC, monitor H7) nos dois modos. No axi_mem_ctrl a contagem e feita
+    // aqui, a cada escrita aceita pela SRAM, como o wr_count do modelo.
+`ifdef MEM_CTRL
+    `define MEM_ARR u_mem.u_ram.mem
+    `define MEM_WRC mem_wr_count
+    integer mem_wr_count [0:16383];
+    integer wc_i;
+    initial for (wc_i = 0; wc_i < 16384; wc_i = wc_i + 1) mem_wr_count[wc_i] = 0;
+    always @(posedge clk)
+        if (u_mem.u_ram.ram_wr_req && u_mem.u_ram.ram_accept)
+            mem_wr_count[u_mem.u_ram.idx] = mem_wr_count[u_mem.u_ram.idx] + 1;
+`else
+    `define MEM_ARR u_mem.mem
+    `define MEM_WRC u_mem.wr_count
+`endif
 
     wire          buf_a_we, buf_b_we, buf_bank;
     wire [IW-1:0] buf_row;
@@ -332,9 +355,9 @@ module tb_dma;
                 for (c = cols; c < stride; c = c + 1) begin
                     addr = base + r * stride + c;
                     idx  = addr[15:2];
-                    w    = u_mem.mem[idx];
+                    w    = `MEM_ARR[idx];
                     w[8 * addr[1:0] +: 8] = 8'hA5 ^ r[7:0] ^ c[7:0];
-                    u_mem.mem[idx] = w;
+                    `MEM_ARR[idx] = w;
                 end
         end
     endtask
@@ -344,8 +367,8 @@ module tb_dma;
         integer i;
         begin
             for (i = 0; i < 16384; i = i + 1) begin
-                u_mem.mem[i]      = mem_init[i];
-                u_mem.wr_count[i] = 0;
+                `MEM_ARR[i] = mem_init[i];
+                `MEM_WRC[i] = 0;
             end
         end
     endtask
@@ -389,20 +412,20 @@ module tb_dma;
                 for (j = 0; j < n; j = j + 1) begin
                     idx = c_base[15:2] + i * n + j;
                     is_c[idx] = 1'b1;
-                    if (u_mem.mem[idx] !== cexp[i * n + j]) begin
+                    if (`MEM_ARR[idx] !== cexp[i * n + j]) begin
                         n_bad = n_bad + 1;
                         if (n_bad <= 8)
-                            $display("  C[%0d][%0d] = %h, esperado %h", i, j, u_mem.mem[idx], cexp[i * n + j]);
+                            $display("  C[%0d][%0d] = %h, esperado %h", i, j, `MEM_ARR[idx], cexp[i * n + j]);
                     end
-                    if (strict && u_mem.wr_count[idx] != 1) begin
+                    if (strict && `MEM_WRC[idx] != 1) begin
                         n_bad = n_bad + 1;
                         if (n_bad <= 8)
-                            $display("  C[%0d][%0d] gravado %0d vezes (H7)", i, j, u_mem.wr_count[idx]);
+                            $display("  C[%0d][%0d] gravado %0d vezes (H7)", i, j, `MEM_WRC[idx]);
                     end
                 end
             if (strict)
                 for (i = 0; i < 16384; i = i + 1)
-                    if (!is_c[i] && (u_mem.wr_count[i] != 0 || u_mem.mem[i] !== mem_init[i])) begin
+                    if (!is_c[i] && (`MEM_WRC[i] != 0 || `MEM_ARR[i] !== mem_init[i])) begin
                         n_bad = n_bad + 1;
                         if (n_bad <= 8)
                             $display("  palavra fora de C alterada: %h", 32'h1000_0000 + 4 * i);
@@ -474,6 +497,7 @@ module tb_dma;
 
     integer    test = 0;
     integer    sr_step = 1;
+    reg        skipped = 1'b0;
     integer    i;
     reg [31:0] cycles, cycles2, cyc_compute, info;
     integer    ar0, aw0;
@@ -495,12 +519,12 @@ module tb_dma;
         end
 
         #1;
-        $readmemh(dmem_file, u_mem.mem);
+        $readmemh(dmem_file, `MEM_ARR);
         for (i = 0; i < 4096; i = i + 1) cexp[i] = 32'hxxxx_xxxx;
         $readmemh(cexp_file, cexp, 0, dim_m * dim_n - 1);
         poison_padding(DEF_A, dim_m, dim_k);
         poison_padding(DEF_B, dim_k, dim_n);
-        for (i = 0; i < 16384; i = i + 1) mem_init[i] = u_mem.mem[i];
+        for (i = 0; i < 16384; i = i + 1) mem_init[i] = `MEM_ARR[i];
 
         repeat (3) @(posedge clk);
         rst_n = 1'b1;
@@ -548,8 +572,14 @@ module tb_dma;
             end
 
             4: begin   // ADDR_C sem slave: DECERR e ERR_CODE 4
+`ifdef MEM_CTRL
+                // O axi_mem_ctrl nao decodifica addr[31:28] (MAS 12.2): quem da o
+                // DECERR e o slave padrao do xbar, que so existe na Entrega 4
+                skipped = 1'b1;
+`else
                 run_op(DEF_A, DEF_B, 32'h2000_0000, dim_m, dim_n, dim_k, 4'd4, cycles);
                 if (!u_chk_m1.idle) fail("transacao pendurada depois do erro");
+`endif
             end
 
             5: begin   // SOFT_RESET no meio da operacao
@@ -620,7 +650,10 @@ module tb_dma;
             fail("assercoes H1-H6 falharam");
 `endif
 
-        if (errors == 0)
+        if (errors == 0 && skipped)
+            $display("TB_DMA T=%0d PP=%0d MB=%0d STALL=%0d TEST=%0d %0dx%0dx%0d: SKIP (DECERR so com o xbar, Entrega 4)",
+                     T, PINGPONG, MAX_BURST, stall_en, test, dim_m, dim_k, dim_n);
+        else if (errors == 0)
             $display("TB_DMA T=%0d PP=%0d MB=%0d STALL=%0d TEST=%0d %0dx%0dx%0d: PASS CYCLES=%0d",
                      T, PINGPONG, MAX_BURST, stall_en, test, dim_m, dim_k, dim_n, cycles);
         else
@@ -631,4 +664,6 @@ module tb_dma;
 
 endmodule
 
+`undef MEM_ARR
+`undef MEM_WRC
 `default_nettype wire

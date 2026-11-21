@@ -400,7 +400,9 @@ module tb_axi_mem_ctrl;
             $dumpvars(0, tb_axi_mem_ctrl);
         end
 
-        // Memoria e referencia com o mesmo conteudo aleatorio
+        // Memoria e referencia com o mesmo conteudo aleatorio. O #1 deixa o
+        // initial da SRAM (que zera a memoria no tempo 0) rodar antes.
+        #1;
         for (i = 0; i < MEM_WORDS; i = i + 1) begin
             v = $random;
             golden[i] = v;
