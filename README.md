@@ -2,7 +2,7 @@
 
 Implementação em Verilog de um processador RISC-V RV32I com coprocessador de multiplicação matricial e controlador DMA baseado em systolic array, desenvolvido no Programa CI Digital da CEPEDI.
 
-> **Status:** ✅ Entregas 1 e 2 concluídas. Entrega 3 em andamento: o DMA e o acelerador v2 estão prontos e já rodam juntos no TB-DMA; ainda falta o controlador da memória compartilhada (`axi_mem_ctrl`).
+> **Status:** ✅ Entregas 1 e 2 concluídas. Entrega 3 em andamento: o DMA, o acelerador v2 e o controlador da memória compartilhada (`axi_mem_ctrl`) estão prontos e rodam juntos no TB-DMA; faltam a forma de onda guardada e o merge do PR #8.
 >
 > **Especificação do DMA:** a microarquitetura completa do DMA com AXI4 burst e prefetch (ping-pong) está no MAS [`docs/dma_mas.md`](docs/dma_mas.md). Onde este README e o MAS divergirem, vale o MAS.
 
@@ -39,7 +39,9 @@ O sistema calcula **C = A × B**. A CPU apenas configura os endereços e dimens�
 │   ├── cpu/       # RISC-V RV32I
 │   ├── dma/       # Controlador DMA
 │   ├── accel/     # MAC e malha sistólica
-│   └── top/       # Top-level, xbar, adapter e memória compartilhada
+│   ├── top/       # Top-level, xbar, adapter e memória compartilhada (axi_mem_ctrl)
+│   └── third_party/
+│       └── interface_amba/  # Frontend AXI4 copiado do projeto interface_amba (§6.2)
 ├── model/         # Golden model (C/C++/Python) com tiling
 ├── sw/            # Firmware (C/Assembly RISC-V)
 ├── tb/
@@ -82,14 +84,15 @@ Objetivo: garantir que o grupo entendeu o escopo e definiu como os módulos se c
 ### Entrega 3 — RTL do DMA e Memória Compartilhada (22/11/2026)
 - [x] **FSMs do DMA** ([`rtl/dma/`](rtl/dma/)): leitura de A e B, escrita de C, contadores e endereços, registradores e motores AXI4 (MAS §5 a §10)
 - [x] **Acelerador v2** ([`rtl/accel/accel.v`](rtl/accel/accel.v)): porta de 32 bits, bancos ping-pong e banco C, como pede o MAS §11. TB-ACC passando em T = 2, 4, 8 × `PINGPONG` = 0, 1
-- [ ] **Memória compartilhada** (passo 2 do MAS, sugerido para Cedraz). Até lá os TBs usam a memória comportamental [`tb/models/axi_mem_model.v`](tb/models/axi_mem_model.v)
-  - [ ] Controlador `rtl/top/axi_mem_ctrl.v` (slave AXI4 da DMEM, MAS §12)
-  - [ ] TB-MEM `tb/unit_mem/tb_axi_mem_ctrl.v`: bursts de 1 a 16 beats, `WSTRB` parcial, leitura de 1 beat por ciclo, SLVERR fora do perfil e fora do range, alternância AR/AW, com e sem backpressure
+- [x] **Memória compartilhada** (passo 2 do MAS): frontend AXI4 do projeto `interface_amba` + SRAM on-chip nossa (§6.2)
+  - [x] Controlador [`rtl/top/axi_mem_ctrl.v`](rtl/top/axi_mem_ctrl.v) (slave AXI4 da DMEM, MAS §12.2)
+  - [x] TB-MEM [`tb/unit_mem/tb_axi_mem_ctrl.v`](tb/unit_mem/tb_axi_mem_ctrl.v): bursts de 1 a 16 beats, `WSTRB` parcial, leitura e escrita de 1 beat por ciclo, SLVERR fora do perfil e fora do range, alternância AR/AW, com e sem backpressure
 - [x] **Testbench sem CPU** ([`tb/unit_dma/tb_dma.v`](tb/unit_dma/tb_dma.v)): o BFM configura os registradores, o DMA lê a memória, alimenta o systolic array real e grava C de volta
-  - [ ] Trocar o `axi_mem_model` pelo `axi_mem_ctrl` no TB-DMA, no TB-RD e no TB-WR (o MAS §16.2 pede os três com o controlador) e rodar `make regress` de novo
-- [x] **Regressão** (§6.1): 168/168 na matriz §16.3 e 54/54 nos testes §16.4
+  - [x] TB-DMA, TB-RD e TB-WR com o `axi_mem_ctrl` (padrão, `MEM=ctrl`); o `axi_mem_model` continua disponível com `MEM=model`
+- [x] **Regressão** (§6.1): com `MEM=ctrl`, 168/168 na matriz §16.3 e 48/48 nos testes §16.4 (o teste 4 fica em SKIP até o xbar); com `MEM=model`, 168/168 e 54/54
+  - [ ] Rodar `make tb_mem tb_dma regress SIM=xcelium` com o `axi_mem_ctrl` (até agora conferido só no Icarus)
 - [ ] **Forma de onda guardada** de uma operação completa para a apresentação (MAS §16.5). O `make wave` gera, mas em `build/`, que o git ignora
-- [ ] **Medir L e `W_OV`** no TB-MEM e no TB-DMA e atualizar as tabelas 7.2, 7.5 e 14.2 do MAS (MAS §18.3)
+- [x] **Medir L e `W_OV`** no TB-MEM e no TB-DMA e atualizar as tabelas 7.2, 7.5 e 14.2 do MAS (MAS §18.3): L = 2 e `W_OV` = 3
 - [ ] **Revisar e fazer merge** do PR #8 (acelerador v2 e TB-DMA com o systolic array real)
 
 ### Entrega 4 — Integração Top-Level, Firmware e Verificação Automatizada (13/12/2026)
@@ -359,12 +362,21 @@ Tudo roda pelo `Makefile` na raiz. O simulador padrão é o Icarus; para usar o 
 | `make lint` | Compila o DMA nas 6 configurações (T × `PINGPONG`) com `-Wall` e asserções, e de novo em Verilog-2005 puro. Qualquer aviso derruba o alvo |
 | `make selftest` | Autoteste do `axi_checker`: ele precisa acusar violações injetadas de propósito |
 | `make tb_regs`, `make tb_rd`, `make tb_wr` | TB-REGS, TB-RD e TB-WR (MAS §16.2) |
-| `make unit` | Os quatro alvos acima |
+| `make tb_mem` | TB-MEM: o `axi_mem_ctrl` sozinho, sem e com backpressure (3 sementes). Imprime as medidas de L e `W_OV` |
+| `make unit` | Os cinco alvos acima |
 | `make tb_accel` | TB-ACC nas 6 configurações (§5) |
 | `make tb_dma` | TB-DMA com o caso 6×5×7. Outra configuração: `make tb_dma T=8 PP=0` |
 | `make regress` | Matriz do MAS §16.3 (168 execuções), testes de erro e dreno da §16.4 e o critério de desempenho da §16.5 |
 | `make wave` | Forma de onda de uma operação completa: `build/wave_dma.shm` no Xcelium (abre no SimVision) ou `build/wave_dma.vcd` no Icarus (abre no GTKWave) |
 | `make clean` | Apaga `build/` |
+
+A DMEM dos alvos `tb_rd`, `tb_wr`, `tb_dma`, `wave` e `regress` se escolhe com `MEM`:
+- `MEM=ctrl` (padrão): o controlador de verdade, [`rtl/top/axi_mem_ctrl.v`](rtl/top/axi_mem_ctrl.v) (§6.2);
+- `MEM=model`: a memória comportamental [`tb/models/axi_mem_model.v`](tb/models/axi_mem_model.v), usada até o controlador existir.
+
+Duas exceções com `MEM=ctrl`:
+- os modos `+WFIRST` do `make tb_wr` (W inteiro aceito antes do AW) rodam sempre com o `axi_mem_model`, porque o controlador só aceita W com o AW presente;
+- o teste 4 da §16.4 (`ADDR_C` sem slave → DECERR) aparece como SKIP. O `axi_mem_ctrl` não decodifica `addr[31:28]`; quem dá o DECERR é o slave padrão do xbar, na Entrega 4.
 
 No TB-DMA, o BFM faz o papel da CPU e escreve nos registradores do DMA. O DMA lê A e B da memória, alimenta o `accel` real e grava C de volta. O TB confere C contra o `c_expected.hex` do golden model, exige que cada palavra de C seja gravada uma única vez (H7) e que nada fora de C mude. Também ficam ligados o `axi_checker` nas duas interfaces, as asserções H1–H6 do DMA e um monitor do protocolo entre DMA e acelerador.
 
@@ -379,17 +391,42 @@ Para rodar o `tb_dma` na mão, ele aceita estes plusargs:
 | `+VCD=<arq>` | Grava a forma de onda em VCD |
 | `+TRACE` | Imprime cada AR/AW aceito, útil para conferir a tabela 8.3 do MAS |
 
-**Resultado atual** (Xcelium 24.09 e Icarus 12, mesmos números nos dois): 168/168 na matriz §16.3, 54/54 nos testes §16.4 e o TB-ACC passando nas 6 configurações. O ping-pong cumpre a §16.5. Abaixo, os ciclos sem backpressure (`PINGPONG = 0` / `PINGPONG = 1`):
+**Resultado atual:** 168/168 na matriz §16.3 e o TB-ACC passando nas 6 configurações. Nos testes §16.4: 48/48 + 6 SKIP com `MEM=ctrl`, e 54/54 com `MEM=model`. O ping-pong cumpre a §16.5 com as duas memórias. Os números com `MEM=model` são iguais no Xcelium 24.09 e no Icarus 12. Com `MEM=ctrl`, até agora só foram conferidos no Icarus 12.
 
-| Caso | T = 2 | T = 4 | T = 8 |
-|---|---|---|---|
-| 3 (6×5×7) | 1090 / 689 (−37 %) | 422 / 294 (−30 %) | 149 / 149 |
-| 6 (3×64×3) | 3433 / 2271 (−34 %) | 727 / 502 (−31 %) | 719 / 530 (−26 %) |
-| 16×16×16 | 14596 / 9493 (−35 %) | 3332 / 2237 (−33 %) | 1116 / 915 (−18 %) |
+Ciclos sem backpressure, `PINGPONG = 0` / `PINGPONG = 1`:
+
+| Caso | DMEM | T = 2 | T = 4 | T = 8 |
+|---|---|---|---|---|
+| 3 (6×5×7) | `ctrl` | 1114 / 658 (−41 %) | 434 / 278 (−36 %) | 155 / 155 |
+| | `model` | 1090 / 689 (−37 %) | 422 / 294 (−30 %) | 149 / 149 |
+| 6 (3×64×3) | `ctrl` | 3439 / 2265 (−34 %) | 730 / 505 (−31 %) | 722 / 533 (−26 %) |
+| | `model` | 3433 / 2271 (−34 %) | 727 / 502 (−31 %) | 719 / 530 (−26 %) |
+| 16×16×16 | `ctrl` | 14724 / 9306 (−37 %) | 3396 / 2136 (−37 %) | 1148 / 848 (−26 %) |
+| | `model` | 14596 / 9493 (−35 %) | 3332 / 2237 (−33 %) | 1116 / 915 (−18 %) |
 
 Quando a operação inteira cabe num bloco só (caso 3 com T = 8, por exemplo), não há o que buscar adiantado e os dois modos empatam.
 
-Essa regressão ainda usa a memória comportamental `tb/models/axi_mem_model.v`. Quando o `axi_mem_ctrl` (passo 2 do MAS) ficar pronto, ele entra no lugar dela no `tb_dma.v` e a regressão precisa rodar de novo.
+As duas memórias diferem em dois pontos:
+- **`PINGPONG = 0` um pouco mais lento com `ctrl`:** no `axi_mem_ctrl`, o B chega 2 ciclos depois do `WLAST`; no modelo, 1 ciclo. Cada linha de C custa um ciclo a mais. No caso 3 com T = 4 são 12 linhas e +12 ciclos.
+- **`PINGPONG = 1` mais rápido com `ctrl`:** o `axi_mem_ctrl` libera a SRAM logo depois do último beat de uma escrita, sem esperar o handshake do B, e a próxima leitura começa antes. Isso pesa quando carga e gravação se sobrepõem.
+
+### 6.2 Controlador da DMEM (`axi_mem_ctrl`) e origem da SRAM AXI
+
+O slave AXI4 da DMEM ([`rtl/top/axi_mem_ctrl.v`](rtl/top/axi_mem_ctrl.v), MAS §12.2) foi montado a partir do slave AXI4 + SRAM do projeto **[`interface_amba`](https://github.com/guto7191/interface_amba)**, branch `Implementacion_uvm_axi_sram`, commit `8f95bf24`.
+
+![Blocos do axi_mem_ctrl](docs/img/axi_mem_ctrl_blocks.svg)
+
+- **Copiado de lá, sem fork:** o frontend AXI4, em [`rtl/third_party/interface_amba/`](rtl/third_party/interface_amba/):
+  - `axi_address_decoder`;
+  - `axi_transaction_manager`, obra derivada **LGPL 2.1+** da IP *AXI4 → Async SRAM* da Ultra-Embedded, com o aviso de copyright preservado;
+  - `axi_narrow_read_align`.
+  
+  O [README da pasta](rtl/third_party/interface_amba/README.md) registra a origem, a licença e cada alteração.
+- **Alterado:** só as regras do decoder, para o perfil do MAS §4.3. Ficou assim: SLVERR com `addr[27:16] ≠ 0`, `AxSIZE ≠ 4 bytes` ou `AxBURST ≠ INCR`; `addr[31:28]` ignorado; sem DECERR. As linhas alteradas levam o marcador `// R<n>`.
+- **Nosso:** [`rtl/top/sram_controller_onchip.v`](rtl/top/sram_controller_onchip.v), uma SRAM síncrona on-chip de 16 K × 32 com escrita por byte. Ela substitui a controladora da SRAM externa de 16 bits (DE2-115) do `interface_amba` e fala o mesmo contrato `ram_*`.
+- **Não trazido:** a controladora da SRAM externa, os arquivos da placa e os testbenches daquele projeto (legado e UVM). O controlador é verificado pelo nosso TB-MEM e pelos TBs do DMA.
+
+Medido no TB-MEM: leitura com o primeiro `RVALID` 2 ciclos depois do AR (L = 2) e 1 beat por ciclo; escrita de 1 beat por ciclo, com o B 2 ciclos depois do `WLAST`. No TB-DMA, cada linha de C custa T + 3 ciclos (`W_OV` = 3), porque o DMA sobe o `WVALID` um ciclo depois do `AWVALID`.
 
 ## 7. Sequência de uma operação completa
 
@@ -511,7 +548,7 @@ python model/golden.py --test-all
 |---|---|---|---|:---:|
 | 1 | 01/11/2026 | Planejamento, microarquitetura e golden model | Equipe | ✅ |
 | 2 | 14/11/2026 | RTL do MAC/systolic array + testbench unitário (2×2 e 4×4) | Equipe | ✅ |
-| 3 | 22/11/2026 | RTL do DMA e memória compartilhada + testbench integrado sem CPU | Augusto, Cedraz, Gabriel, Jair | ⏳ falta o `axi_mem_ctrl` |
+| 3 | 22/11/2026 | RTL do DMA e memória compartilhada + testbench integrado sem CPU | Augusto, Cedraz, Gabriel, Jair | ⏳ falta a forma de onda guardada e o merge do PR #8 |
 | 4 | 13/12/2026 | Top-level, firmware e UVM integrado | Tássio, Jair, Gabriel, Cedraz | ⬜ |
 | Final | 18–19/12/2026 | Relatório técnico, síntese (≥ 3 configurações) e apresentação | Equipe (liderado por Jair e Gabriel) | ⬜ |
 

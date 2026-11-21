@@ -21,7 +21,7 @@ O que **não** veio:
 - o `axi_defs.vh` de lá, que tem o mesmo guard `AXI_DEFS_VH` do nosso [`rtl/common/axi_defs.vh`](../../common/axi_defs.vh). O nosso já define `AXI_RESP_OKAY`, `AXI_RESP_SLVERR` e `AXI_RESP_DECERR`, que são as únicas macros que o decoder usa;
 - a controladora da SRAM externa de 16 bits (`sram_controller*`, `sram_io_buffer`), a placa (`de2_115_top`, `reset_synchronizer`), a IP original e os testbenches (legado e UVM).
 
-No lugar da SRAM externa, o backend é a nossa SRAM síncrona on-chip [`rtl/top/dmem_sram.v`](../../top/dmem_sram.v), que segue o mesmo contrato `ram_*`.
+No lugar da SRAM externa, o backend é a nossa SRAM síncrona on-chip [`rtl/top/sram_controller_onchip.v`](../../top/sram_controller_onchip.v), que segue o mesmo contrato `ram_*`.
 
 ## Licença
 

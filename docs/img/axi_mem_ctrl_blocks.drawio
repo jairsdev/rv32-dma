@@ -1,0 +1,57 @@
+<mxfile host="app.diagrams.net" version="24.0.0">
+  <diagram id="axi_mem_ctrl_blocks" name="axi_mem_ctrl">
+    <mxGraphModel dx="1000" dy="560" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1000" pageHeight="560" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell vertex="1" parent="1" id="mst" value="master AXI4&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;S0 do axi_xbar · ou o TB&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#808285;strokeColor=#5A5C5E;fontColor=#FFFFFF;">
+          <mxGeometry x="360" y="20" width="240" height="50" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="reg" value="axi_mem_ctrl.v (rtl/top) — parâmetros ID_W, MEM_WORDS, INIT_FILE" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E6ECEC;strokeColor=none;fontSize=11;fontStyle=2;fontColor=#4A5555;align=left;verticalAlign=top;spacingLeft=8;spacingTop=4;">
+          <mxGeometry x="20" y="100" width="960" height="440" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="frm" value="frontend copiado do interface_amba (rtl/third_party/interface_amba)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#888888;dashed=1;fontSize=11;fontStyle=2;fontColor=#4A5555;align=left;verticalAlign=top;spacingLeft=8;spacingTop=4;">
+          <mxGeometry x="40" y="130" width="580" height="390" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="dec" value="axi_address_decoder&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;addr[27:16] = 0 · AxSIZE = 4 bytes · AxBURST = INCR&lt;br&gt;fora disso: SLVERR em todo o burst, sem acessar a SRAM&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#7ED321;strokeColor=#5FA316;fontColor=#1B2A05;">
+          <mxGeometry x="70" y="170" width="530" height="70" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="mgr" value="axi_transaction_manager&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;round-robin AR / AW por transação · endereço de cada beat&lt;br&gt;FIFO de pedidos (4) e de respostas (4) · B depois do último beat&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#1CC0DD;strokeColor=#119BB3;fontColor=#FFFFFF;">
+          <mxGeometry x="70" y="290" width="530" height="90" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="aln" value="axi_narrow_read_align&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;passagem direta (4 bytes)&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#808285;strokeColor=#5A5C5E;fontColor=#FFFFFF;">
+          <mxGeometry x="70" y="430" width="250" height="60" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="ram" value="sram_controller_onchip&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px'&gt;rtl/top · 16 K × 32 · single-port&lt;br&gt;escrita por byte (WSTRB)&lt;br&gt;ram_accept = 1 · ram_ack 1 ciclo depois&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=12;fontStyle=1;rounded=1;fillColor=#0E8FB4;strokeColor=#0B6F8A;fontColor=#FFFFFF;">
+          <mxGeometry x="740" y="280" width="230" height="110" as="geometry" />
+        </mxCell>
+        <mxCell vertex="1" parent="1" id="tim" value="&lt;span style='font-weight:normal;font-size:11px'&gt;medido no TB-MEM:&lt;br&gt;leitura: RVALID 2 ciclos depois do AR,&lt;br&gt;1 beat por ciclo (L = 2)&lt;br&gt;escrita: 1 beat por ciclo, B 2 ciclos&lt;br&gt;depois do WLAST (W_OV = 2)&lt;/span&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=10;fontColor=#0B6F8A;">
+          <mxGeometry x="740" y="410" width="240" height="90" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="e_m" value="AW / W / B · AR / R&lt;br&gt;ID de ID_W bits" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.7736;entryY=0.0000;entryDx=0;entryDy=0;" source="mst" target="dec">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="e_dm" value="pedidos válidos" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;exitX=0.5000;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="dec" target="mgr">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="e_req" value="ram_rd · ram_wr_req&lt;br&gt;addr · wdata · WSTRB" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1;startArrow=none;strokeColor=#333333;exitX=1.0000;exitY=0.2222;exitDx=0;exitDy=0;entryX=0.0000;entryY=0.2727;entryDx=0;entryDy=0;" source="mgr" target="ram">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="e_rsp" value="ram_ack&lt;br&gt;ram_read_data" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1;startArrow=none;strokeColor=#333333;exitX=0.0000;exitY=0.7273;exitDx=0;exitDy=0;entryX=1.0000;entryY=0.7778;entryDx=0;entryDy=0;" source="ram" target="mgr">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="e_ma" value="R" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1;startArrow=none;strokeColor=#333333;exitX=0.2358;exitY=1.0000;exitDx=0;exitDy=0;entryX=0.5000;entryY=0.0000;entryDx=0;entryDy=0;" source="mgr" target="aln">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell edge="1" parent="1" id="e_ad" value="R" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;labelBackgroundColor=#FFFFFF;startArrow=classic;startFill=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#333333;strokeWidth=1;startArrow=none;strokeColor=#333333;exitX=0.0000;exitY=0.5000;exitDx=0;exitDy=0;entryX=0.0000;entryY=0.5000;entryDx=0;entryDy=0;" source="aln" target="dec">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="52" y="460" />
+              <mxPoint x="52" y="205" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
