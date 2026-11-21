@@ -4,8 +4,10 @@
 // MAS §4.3, §5.3, §5.3.1. Fica entre o mestre (lado s_axi_*) e o axi_transaction_manager
 // (lado m_axi_*); a SRAM nunca ve uma requisicao invalida.
 //
-//   - Endereco fora de 0x0000_0000..0x001F_FFFF (inicio OU fim do burst): resposta DECERR.
-//   - AxSIZE acima de 4 bytes (3'b010): resposta SLVERR. DECERR tem precedencia (MAS §5.3.1).
+//   - Endereco com addr[27:16] != 0 (inicio OU fim do burst), AxSIZE != 4 bytes ou      // R4
+//     AxBURST != INCR: resposta SLVERR. Nao ha DECERR (perfil do rv32-dma, MAS §4.3 e   // R4
+//     §12.2). addr[31:28] e ignorado: a DMEM aparece em toda a faixa 0xX000_0000 a      // R4
+//     0xX000_FFFF, e quem separa os slaves pelo prefixo e o xbar.                       // R4
 //   - A requisicao invalida NAO e encaminhada. O burst e drenado por inteiro: leitura devolve
 //     arlen+1 beats com o mesmo codigo e rlast no ultimo; escrita consome awlen+1 beats de W
 //     e devolve uma unica resposta B. Um burst parcialmente respondido trava o canal.
@@ -108,33 +110,26 @@ module axi_address_decoder (
     // =====================================================================================
     // Decodificacao (combinacional) - faixa e tamanho
     // =====================================================================================
-    // Fim do burst = Aligned_Address + (len+1)*2^size - 1 (IHI0022E §A3.4.1); a faixa e
-    // potencia de dois, entao "dentro da faixa" e "bits [31:21] todos zero" (OR reduzido).
+    // Fim do burst = Aligned_Address + (len+1)*2^size - 1 (IHI0022E §A3.4.1); a DMEM tem
+    // 64 KiB, entao "dentro da faixa" e "bits [27:16] todos zero" no inicio e no fim. // R1
+    // addr[31:28] nao e olhado: quem decodifica o prefixo e o xbar (MAS rv32-dma §12.1). // R1
     wire [31:0] ar_nbytes_w  = 32'd1 << s_axi_arsize;
     wire [31:0] ar_aligned_w = s_axi_araddr & ~(ar_nbytes_w - 32'd1);
     wire [31:0] ar_end_w     = ar_aligned_w + (({24'd0, s_axi_arlen} + 32'd1) << s_axi_arsize) - 32'd1;
-    wire        ar_addr_ok_w = ~(|s_axi_araddr[31:21]) & ~(|ar_end_w[31:21]);
-    wire        ar_size_ok_w = (s_axi_arsize <= 3'b010);
+    wire        ar_addr_ok_w = ~(|s_axi_araddr[27:16]) & ~(|ar_end_w[27:16]); // R1
+    wire        ar_size_ok_w = (s_axi_arsize == 3'b010) & (s_axi_arburst == 2'b01); // R2: so 4 B e INCR
     wire        ar_ok_w      = ar_addr_ok_w & ar_size_ok_w;
 
     wire [31:0] aw_nbytes_w  = 32'd1 << s_axi_awsize;
     wire [31:0] aw_aligned_w = s_axi_awaddr & ~(aw_nbytes_w - 32'd1);
     wire [31:0] aw_end_w     = aw_aligned_w + (({24'd0, s_axi_awlen} + 32'd1) << s_axi_awsize) - 32'd1;
-    wire        aw_addr_ok_w = ~(|s_axi_awaddr[31:21]) & ~(|aw_end_w[31:21]);
-    wire        aw_size_ok_w = (s_axi_awsize <= 3'b010);
+    wire        aw_addr_ok_w = ~(|s_axi_awaddr[27:16]) & ~(|aw_end_w[27:16]); // R1
+    wire        aw_size_ok_w = (s_axi_awsize == 3'b010) & (s_axi_awburst == 2'b01); // R2: so 4 B e INCR
     wire        aw_ok_w      = aw_addr_ok_w & aw_size_ok_w;
 
-    // codigo de erro: DECERR (endereco) tem precedencia sobre SLVERR (tamanho)
-    reg [1:0] ar_err_code_r;
-    reg [1:0] aw_err_code_r;
-    always @* begin
-        if (!ar_addr_ok_w) ar_err_code_r = `AXI_RESP_DECERR;
-        else               ar_err_code_r = `AXI_RESP_SLVERR;
-    end
-    always @* begin
-        if (!aw_addr_ok_w) aw_err_code_r = `AXI_RESP_DECERR;
-        else               aw_err_code_r = `AXI_RESP_SLVERR;
-    end
+    // codigo de erro: sempre SLVERR, fora da faixa ou fora do perfil (MAS rv32-dma §4.3) // R3
+    wire [1:0] ar_err_code_w = `AXI_RESP_SLVERR; // R3
+    wire [1:0] aw_err_code_w = `AXI_RESP_SLVERR; // R3
 
     // =====================================================================================
     // CANAL DE LEITURA (AR / R)
@@ -194,7 +189,7 @@ module axi_address_decoder (
             // captura o comando invalido no ciclo em que ele e aceito
             if (rd_state_q == S_IDLE && s_axi_arvalid && !ar_ok_w) begin
                 rd_err_id_q   <= s_axi_arid;
-                rd_err_code_q <= ar_err_code_r;
+                rd_err_code_q <= ar_err_code_w; // R3
                 rd_beat_cnt_q <= s_axi_arlen;
             end
             if (rd_err_hs_w) rd_beat_cnt_q <= rd_beat_cnt_q - 8'd1;
@@ -312,7 +307,7 @@ module axi_address_decoder (
                 wr_err_w_done_q <= 1'b0;
                 if (s_axi_awvalid && !aw_ok_w) begin
                     wr_err_id_q   <= s_axi_awid;
-                    wr_err_code_q <= aw_err_code_r;
+                    wr_err_code_q <= aw_err_code_w; // R3
                 end
             end else if (wr_state_q == S_PASSTHROUGH) begin
                 if (m_aw_hs_w)     aw_done_q    <= 1'b1;
