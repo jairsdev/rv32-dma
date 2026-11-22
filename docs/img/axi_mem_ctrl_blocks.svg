@@ -1,0 +1,118 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif" width="1000" height="560" viewBox="0 0 1000 560">
+  <defs>
+    <marker id="m_fill_333333" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#333333" />
+    </marker>
+  </defs>
+  <rect x="0" y="0" fill="#FFFFFF" width="1000" height="560" />
+  <rect x="360" y="20" width="240" height="50" fill="#808285" stroke="#5A5C5E" stroke-width="1" rx="7.5" ry="7.5" />
+  <text x="480.0" y="41.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">master AXI4</tspan>
+  </text>
+  <text x="480.0" y="56.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">S0 do axi_xbar · ou o TB</tspan>
+  </text>
+  <rect x="20" y="100" width="960" height="440" fill="#E6ECEC" stroke="none" stroke-width="1" />
+  <text x="28.0" y="114.7" text-anchor="start" fill="#4A5555" font-style="italic">
+    <tspan font-size="11" font-weight="normal">axi_mem_ctrl.v (rtl/top) — parâmetros ID_W, MEM_WORDS, INIT_FILE</tspan>
+  </text>
+  <rect x="40" y="130" width="580" height="390" fill="none" stroke="#888888" stroke-width="1" stroke-dasharray="6,4" />
+  <text x="48.0" y="144.7" text-anchor="start" fill="#4A5555" font-style="italic">
+    <tspan font-size="11" font-weight="normal">frontend copiado do interface_amba (rtl/third_party/interface_amba)</tspan>
+  </text>
+  <rect x="70" y="170" width="530" height="70" fill="#7ED321" stroke="#5FA316" stroke-width="1" rx="10.0" ry="10.0" />
+  <text x="335.0" y="194.2" text-anchor="middle" fill="#1B2A05">
+    <tspan font-size="12" font-weight="bold">axi_address_decoder</tspan>
+  </text>
+  <text x="335.0" y="209.2" text-anchor="middle" fill="#1B2A05">
+    <tspan font-size="11" font-weight="normal">addr[27:16] = 0 · AxSIZE = 4 bytes · AxBURST = INCR</tspan>
+  </text>
+  <text x="335.0" y="224.2" text-anchor="middle" fill="#1B2A05">
+    <tspan font-size="11" font-weight="normal">fora disso: SLVERR em todo o burst, sem acessar a SRAM</tspan>
+  </text>
+  <rect x="70" y="290" width="530" height="90" fill="#1CC0DD" stroke="#119BB3" stroke-width="1" rx="10.0" ry="10.0" />
+  <text x="335.0" y="324.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">axi_transaction_manager</tspan>
+  </text>
+  <text x="335.0" y="339.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">round-robin AR / AW por transação · endereço de cada beat</tspan>
+  </text>
+  <text x="335.0" y="354.2" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">FIFO de pedidos (4) e de respostas (4) · B depois do último beat</tspan>
+  </text>
+  <rect x="70" y="430" width="250" height="60" fill="#808285" stroke="#5A5C5E" stroke-width="1" rx="9.0" ry="9.0" />
+  <text x="195.0" y="456.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">axi_narrow_read_align</tspan>
+  </text>
+  <text x="195.0" y="471.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">passagem direta (4 bytes)</tspan>
+  </text>
+  <rect x="740" y="280" width="230" height="110" fill="#0E8FB4" stroke="#0B6F8A" stroke-width="1" rx="10.0" ry="10.0" />
+  <text x="855.0" y="316.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="12" font-weight="bold">sram_controller_onchip</tspan>
+  </text>
+  <text x="855.0" y="331.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">rtl/top · 16 K × 32 · single-port</tspan>
+  </text>
+  <text x="855.0" y="346.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">escrita por byte (WSTRB)</tspan>
+  </text>
+  <text x="855.0" y="361.7" text-anchor="middle" fill="#FFFFFF">
+    <tspan font-size="11" font-weight="normal">ram_accept = 1 · ram_ack 1 ciclo depois</tspan>
+  </text>
+  <text x="744.0" y="431.4" text-anchor="start" fill="#0B6F8A">
+    <tspan font-size="11" font-weight="normal">medido no TB-MEM:</tspan>
+  </text>
+  <text x="744.0" y="445.1" text-anchor="start" fill="#0B6F8A">
+    <tspan font-size="11" font-weight="normal">leitura: RVALID 2 ciclos depois do AR,</tspan>
+  </text>
+  <text x="744.0" y="458.9" text-anchor="start" fill="#0B6F8A">
+    <tspan font-size="11" font-weight="normal">1 beat por ciclo (L = 2)</tspan>
+  </text>
+  <text x="744.0" y="472.6" text-anchor="start" fill="#0B6F8A">
+    <tspan font-size="11" font-weight="normal">escrita: 1 beat por ciclo, B 2 ciclos</tspan>
+  </text>
+  <text x="744.0" y="486.4" text-anchor="start" fill="#0B6F8A">
+    <tspan font-size="11" font-weight="normal">depois do WLAST (W_OV = 2)</tspan>
+  </text>
+  <polyline points="480,70 480,170" fill="none" stroke="#333333" stroke-width="2" marker-end="url(#m_fill_333333)" marker-start="url(#m_fill_333333)" />
+  <polyline points="335,240 335,290" fill="none" stroke="#333333" stroke-width="2" marker-end="url(#m_fill_333333)" marker-start="url(#m_fill_333333)" />
+  <polyline points="600,310 740,310" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="740,360 600,360" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="195,380 195,430" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <polyline points="70,460 52,460 52,205 70,205" fill="none" stroke="#333333" stroke-width="1" marker-end="url(#m_fill_333333)" />
+  <rect x="422.8" y="106.5" width="114.4" height="27.0" fill="#FFFFFF" />
+  <text x="480.0" y="117.2" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">AW / W / B · AR / R</tspan>
+  </text>
+  <text x="480.0" y="129.8" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">ID de ID_W bits</tspan>
+  </text>
+  <rect x="289.0" y="257.8" width="92.0" height="14.5" fill="#FFFFFF" />
+  <text x="335.0" y="268.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">pedidos válidos</tspan>
+  </text>
+  <rect x="610.0" y="296.5" width="120.0" height="27.0" fill="#FFFFFF" />
+  <text x="670.0" y="307.2" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">ram_rd · ram_wr_req</tspan>
+  </text>
+  <text x="670.0" y="319.8" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">addr · wdata · WSTRB</tspan>
+  </text>
+  <rect x="629.6" y="346.5" width="80.8" height="27.0" fill="#FFFFFF" />
+  <text x="670.0" y="357.2" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">ram_ack</tspan>
+  </text>
+  <text x="670.0" y="369.8" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">ram_read_data</tspan>
+  </text>
+  <rect x="188.2" y="397.8" width="13.6" height="14.5" fill="#FFFFFF" />
+  <text x="195.0" y="408.5" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">R</tspan>
+  </text>
+  <rect x="45.2" y="325.2" width="13.6" height="14.5" fill="#FFFFFF" />
+  <text x="52.0" y="336.0" text-anchor="middle" fill="#000000">
+    <tspan font-size="10" font-weight="normal">R</tspan>
+  </text>
+</svg>

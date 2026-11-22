@@ -1,7 +1,8 @@
 `timescale 1ns/1ps
 `default_nettype none
 
-// TB-WR (MAS 16.2): dma_wr_engine + axi_rand_stall + axi_mem_model + modelo de C.
+// TB-WR (MAS 16.2): dma_wr_engine + axi_rand_stall + DMEM (axi_mem_ctrl com
+// MEM_CTRL definido, axi_mem_model sem ele) + modelo de C.
 // Confere: nwords = 1 ... T, linha de C certa (c_row), cada palavra gravada
 // exatamente uma vez, divisao em 4 KB, MAX_BURST pequeno (parametro), fila de
 // C sob backpressure (+STALL), W inteiro antes do AW (+WFIRST) e BRESP de erro.
@@ -149,8 +150,16 @@ module tb_dma_wr_engine;
         .s_rvalid(s_rvalid), .s_rready(s_rready)
     );
 
+    // DMEM: axi_mem_ctrl (MEM=ctrl, define MEM_CTRL) ou axi_mem_model (MEM=model).
+    // O +WFIRST depende do w_first do modelo: o axi_mem_ctrl so aceita W com o
+    // AW presente, entao esse modo roda sempre com o modelo.
+`ifdef MEM_CTRL
+    axi_mem_ctrl #(.ID_W(1)) u_mem (
+        .clk(clk), .rst_n(rst_n),
+`else
     axi_mem_model #(.ID_W(1)) u_mem (
         .clk(clk), .rst_n(rst_n), .w_first(w_first),
+`endif
         .awid(s_awid), .awaddr(s_awaddr), .awlen(s_awlen), .awsize(s_awsize),
         .awburst(s_awburst), .awvalid(s_awvalid), .awready(s_awready),
         .wdata(s_wdata), .wstrb(s_wstrb), .wlast(s_wlast), .wvalid(s_wvalid), .wready(s_wready),
@@ -160,6 +169,21 @@ module tb_dma_wr_engine;
         .rid(s_rid), .rdata(s_rdata), .rresp(s_rresp), .rlast(s_rlast), .rvalid(s_rvalid),
         .rready(s_rready)
     );
+
+    // Acesso direto a memoria e contagem de escritas por palavra nos dois modos
+`ifdef MEM_CTRL
+    `define MEM_ARR u_mem.u_ram.mem
+    `define MEM_WRC mem_wr_count
+    integer mem_wr_count [0:16383];
+    integer wc_i;
+    initial for (wc_i = 0; wc_i < 16384; wc_i = wc_i + 1) mem_wr_count[wc_i] = 0;
+    always @(posedge clk)
+        if (u_mem.u_ram.ram_wr_req && u_mem.u_ram.ram_accept)
+            mem_wr_count[u_mem.u_ram.idx] = mem_wr_count[u_mem.u_ram.idx] + 1;
+`else
+    `define MEM_ARR u_mem.mem
+    `define MEM_WRC u_mem.wr_count
+`endif
 
     // Cobertura: transicao W_ADDR -> W_RESP (W inteiro aceito antes do AW)
     integer n_addr_to_resp = 0;
@@ -214,17 +238,17 @@ module tb_dma_wr_engine;
                     for (w = 0; w < c_nwords[i]; w = w + 1) begin
                         idx = (c_addr[i][15:2] + w) % 16384;
                         expected_writes[idx] = expected_writes[idx] + 1;
-                        if (u_mem.mem[idx] !== c_val(c_rowv[i], w)) begin
+                        if (`MEM_ARR[idx] !== c_val(c_rowv[i], w)) begin
                             errors = errors + 1;
                             $display("FALHA cmd %0d palavra %0d (%h): %h, esperado %h",
-                                     i, w, c_addr[i] + 4 * w, u_mem.mem[idx], c_val(c_rowv[i], w));
+                                     i, w, c_addr[i] + 4 * w, `MEM_ARR[idx], c_val(c_rowv[i], w));
                         end
                     end
             for (i = 0; i < 16384; i = i + 1)
-                if (u_mem.wr_count[i] != expected_writes[i]) begin
+                if (`MEM_WRC[i] != expected_writes[i]) begin
                     errors = errors + 1;
                     $display("FALHA: palavra %h escrita %0d vezes, esperado %0d",
-                             32'h1000_0000 + 4 * i, u_mem.wr_count[i], expected_writes[i]);
+                             32'h1000_0000 + 4 * i, `MEM_WRC[i], expected_writes[i]);
                 end
         end
     endtask
@@ -234,6 +258,12 @@ module tb_dma_wr_engine;
         if ($test$plusargs("STALL"))  stall_en = 1'b1;
         if ($test$plusargs("WFIRST")) w_first  = 1'b1;
         if ($value$plusargs("SEED=%d", seed)) ;
+`ifdef MEM_CTRL
+        if (w_first) begin
+            errors = errors + 1;
+            $display("FALHA: +WFIRST so funciona com o axi_mem_model (MEM=model)");
+        end
+`endif
 
         repeat (3) @(posedge clk);
         rst_n = 1'b1;
@@ -298,4 +328,6 @@ module tb_dma_wr_engine;
 
 endmodule
 
+`undef MEM_ARR
+`undef MEM_WRC
 `default_nettype wire

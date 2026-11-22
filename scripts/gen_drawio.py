@@ -14,7 +14,7 @@ Diagramas:
   dma_store_fsm    - FSM de gravacao de C (MAS 9.4)
   axi_rd_wr_fsm    - FSMs dos motores AXI de leitura e escrita (MAS 9.5)
   axi_xbar         - crossbar AXI4 2x2 (MAS 12.1)
-  axi_mem_ctrl_fsm - FSM do controlador de memoria AXI4 (MAS 12.2)
+  axi_mem_ctrl_blocks - blocos do controlador da DMEM: frontend do interface_amba + SRAM on-chip (MAS 12.2)
   sequencia  - sequencia de uma operacao completa: configuracao, wfi, tiles, irq, W1C
 """
 import sys
@@ -423,23 +423,30 @@ def axi_xbar():
     return d
 
 
-def axi_mem_ctrl_fsm():
-    d = Diagram("axi_mem_ctrl_fsm", "axi_mem_ctrl", 960, 530)
+def axi_mem_ctrl_blocks():
+    d = Diagram("axi_mem_ctrl_blocks", "axi_mem_ctrl", 1000, 560)
     v, e = d.vertex, d.edge
-    _st(v, "idle", "M_IDLE", "escolhe AR ou AW (round-robin)", 360, 40)
-    _st(v, "rd", "M_RD", "lê SRAM · fila de 2 · RVALID · RLAST", 120, 180)
-    _st(v, "wr", "M_WR", "WREADY = 1 · escreve com WSTRB", 560, 180)
-    _st(v, "wresp", "M_WR_RESP", "BVALID · BRESP · BID", 560, 320)
-    v("sram", f"SRAM DMEM<br>{SMALL}16 K × 32 · single-port · leitura 1 ciclo</span>", 240, 440, 400, 60, ST_GRAY)
+    note = ST_TEXT + "fontSize=10;fontColor=#0B6F8A;"
 
-    e("t1", "idle", "rd", (400, 100), (250, 180), "AR · ARREADY", ST_TRANS, via=[(400, 140), (250, 140)])
-    e("t2", "idle", "wr", (590, 100), (590, 180), "AW · AWREADY", ST_TRANS)
-    e("t3", "rd", "idle", (120, 210), (360, 70), "beat com RLAST aceito", ST_TRANS, via=[(60, 210), (60, 70)],
-      offset=(80, -12))
-    e("t4", "wr", "wresp", (690, 240), (690, 320), "WLAST", ST_TRANS)
-    e("t5", "wresp", "idle", (820, 350), (620, 70), "BREADY", ST_TRANS, via=[(900, 350), (900, 70)])
-    e("t6", "rd", "sram", (300, 240), (300, 440), "addr, rd", ST_DATA)
-    e("t7", "wr", "sram", (560, 210), (520, 440), "addr, wdata, WSTRB", ST_DATA, via=[(520, 210)])
+    v("mst", f"master AXI4<br>{SMALL}S0 do axi_xbar · ou o TB</span>", 360, 20, 240, 50, ST_GRAY)
+    v("reg", "axi_mem_ctrl.v (rtl/top) — parâmetros ID_W, MEM_WORDS, INIT_FILE", 20, 100, 960, 440, ST_REGION)
+    v("frm", "frontend copiado do interface_amba (rtl/third_party/interface_amba)", 40, 130, 580, 390, ST_FRAME)
+    v("dec", f"axi_address_decoder<br>{SMALL}addr[27:16] = 0 · AxSIZE = 4 bytes · AxBURST = INCR<br>"
+             "fora disso: SLVERR em todo o burst, sem acessar a SRAM</span>", 70, 170, 530, 70, ST_SWITCH)
+    v("mgr", f"axi_transaction_manager<br>{SMALL}round-robin AR / AW por transação · endereço de cada beat<br>"
+             "FIFO de pedidos (4) e de respostas (4) · B depois do último beat</span>", 70, 290, 530, 90, ST_ADAPTER)
+    v("aln", f"axi_narrow_read_align<br>{SMALL}passagem direta (4 bytes)</span>", 70, 430, 250, 60, ST_GRAY)
+    v("ram", f"sram_controller_onchip<br>{SMALL}rtl/top · 16 K × 32 · single-port<br>escrita por byte (WSTRB)<br>"
+             "ram_accept = 1 · ram_ack 1 ciclo depois</span>", 740, 280, 230, 110, ST_MASTER)
+    v("tim", f"{SMALL}medido no TB-MEM:<br>leitura: RVALID 2 ciclos depois do AR,<br>1 beat por ciclo (L = 2)<br>"
+             "escrita: 1 beat por ciclo, B 2 ciclos<br>depois do WLAST (W_OV = 2)</span>", 740, 410, 240, 90, note)
+
+    e("e_m", "mst", "dec", (480, 70), (480, 170), "AW / W / B · AR / R<br>ID de ID_W bits", ST_AXI)
+    e("e_dm", "dec", "mgr", (335, 240), (335, 290), "pedidos válidos", ST_AXI)
+    e("e_req", "mgr", "ram", (600, 310), (740, 310), "ram_rd · ram_wr_req<br>addr · wdata · WSTRB", ST_DATA)
+    e("e_rsp", "ram", "mgr", (740, 360), (600, 360), "ram_ack<br>ram_read_data", ST_DATA)
+    e("e_ma", "mgr", "aln", (195, 380), (195, 430), "R", ST_DATA)
+    e("e_ad", "aln", "dec", (70, 460), (70, 205), "R", ST_DATA, via=[(52, 460), (52, 205)])
     return d
 
 
@@ -489,7 +496,7 @@ if __name__ == "__main__":
     out = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_OUT
     out.mkdir(parents=True, exist_ok=True)
     for build in (top_level, accel, dma_blocks, dma_ctrl_fsm, dma_load_fsm, dma_compute_fsm,
-                  dma_store_fsm, axi_rd_wr_fsm, axi_xbar, axi_mem_ctrl_fsm, sequencia):
+                  dma_store_fsm, axi_rd_wr_fsm, axi_xbar, axi_mem_ctrl_blocks, sequencia):
         diagram = build()
         for ext, write in ((".drawio", diagram.write_drawio), (".svg", diagram.write_svg)):
             path = out / (diagram.diagram_id + ext)
