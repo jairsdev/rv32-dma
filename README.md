@@ -2,7 +2,7 @@
 
 Implementação em Verilog de um processador RISC-V RV32I com coprocessador de multiplicação matricial e controlador DMA baseado em systolic array, desenvolvido no Programa CI Digital da CEPEDI.
 
-> **Status:** ✅ Entregas 1 e 2 concluídas (próxima etapa: Entrega 3 — DMA e Memória Compartilhada)
+> **Status:** ✅ Entregas 1 e 2 concluídas. Entrega 3 em andamento: o DMA e o acelerador v2 estão prontos e já rodam juntos no TB-DMA; ainda falta o controlador da memória compartilhada (`axi_mem_ctrl`).
 >
 > **Especificação do DMA:** a microarquitetura completa do DMA com AXI4 burst e prefetch (ping-pong) está no MAS [`docs/dma_mas.md`](docs/dma_mas.md). Onde este README e o MAS divergirem, vale o MAS.
 
@@ -78,6 +78,37 @@ Objetivo: garantir que o grupo entendeu o escopo e definiu como os módulos se c
 - [x] **Testbench Unitário**:
   - [x] Simulação com autocheck ([`tb/unit_accel/tb_accel.v`](tb/unit_accel/tb_accel.v)) simulando injeção de dados pelo DMA
   - [x] Validação comprovada para malhas 2×2 (com múltiplos blocos de K) e 4×4
+
+### Entrega 3 — RTL do DMA e Memória Compartilhada (22/11/2026)
+- [x] **FSMs do DMA** ([`rtl/dma/`](rtl/dma/)): leitura de A e B, escrita de C, contadores e endereços, registradores e motores AXI4 (MAS §5 a §10)
+- [x] **Acelerador v2** ([`rtl/accel/accel.v`](rtl/accel/accel.v)): porta de 32 bits, bancos ping-pong e banco C, como pede o MAS §11. TB-ACC passando em T = 2, 4, 8 × `PINGPONG` = 0, 1
+- [ ] **Memória compartilhada** (passo 2 do MAS, sugerido para Cedraz). Até lá os TBs usam a memória comportamental [`tb/models/axi_mem_model.v`](tb/models/axi_mem_model.v)
+  - [ ] Controlador `rtl/top/axi_mem_ctrl.v` (slave AXI4 da DMEM, MAS §12)
+  - [ ] TB-MEM `tb/unit_mem/tb_axi_mem_ctrl.v`: bursts de 1 a 16 beats, `WSTRB` parcial, leitura de 1 beat por ciclo, SLVERR fora do perfil e fora do range, alternância AR/AW, com e sem backpressure
+- [x] **Testbench sem CPU** ([`tb/unit_dma/tb_dma.v`](tb/unit_dma/tb_dma.v)): o BFM configura os registradores, o DMA lê a memória, alimenta o systolic array real e grava C de volta
+  - [ ] Trocar o `axi_mem_model` pelo `axi_mem_ctrl` no TB-DMA, no TB-RD e no TB-WR (o MAS §16.2 pede os três com o controlador) e rodar `make regress` de novo
+- [x] **Regressão** (§6.1): 168/168 na matriz §16.3 e 54/54 nos testes §16.4
+- [ ] **Forma de onda guardada** de uma operação completa para a apresentação (MAS §16.5). O `make wave` gera, mas em `build/`, que o git ignora
+- [ ] **Medir L e `W_OV`** no TB-MEM e no TB-DMA e atualizar as tabelas 7.2, 7.5 e 14.2 do MAS (MAS §18.3)
+- [ ] **Revisar e fazer merge** do PR #8 (acelerador v2 e TB-DMA com o systolic array real)
+
+### Entrega 4 — Integração Top-Level, Firmware e Verificação Automatizada (13/12/2026)
+- [ ] **CPU RV32I multiciclo na `main`**: já existe na branch `processor-rv32i` (FSM multiciclo, portas I/D valid/ready, `wfi`, testes em `tb/unit_cpu/`). Falta revisar e integrar. A branch saiu antes do merge do DMA, então o merge precisa de cuidado para não apagar `rtl/dma/` e `tb/unit_dma/`
+- [ ] **Crossbar AXI 2×2** (passo 9 do MAS, sugerido para Cedraz)
+  - [ ] `rtl/top/axi_xbar.v` (MAS §12.1)
+  - [ ] TB-XBAR `tb/unit_xbar/tb_axi_xbar.v`: decodificação, round-robin, travamento por burst, rota de W, IDs e DECERR com burst
+- [ ] **Adapter da CPU e top-level** (passo 10 do MAS, sugerido para Tássio e Cedraz)
+  - [ ] `rtl/top/cpu_axi_adapter.v`: Porta D da CPU → master M0
+  - [ ] `rtl/top/top.v` instanciando CPU, IMEM, crossbar, `axi_mem_ctrl`, DMA e acelerador
+- [ ] **Firmware** em [`sw/`](sw/) (responsável: a definir)
+  - [ ] Programa em C ou Assembly que configura `ADDR_A/B/C` e `DIM_M/N/K`, dá START com `IRQ_EN`, espera no `wfi` e confere o STATUS (§7)
+  - [ ] Linker script com `.data` e `.rodata` na DMEM (§10) e o binário `.hex` carregado na IMEM
+- [ ] **Teste de erro 4 do MAS §16.4**: `ADDR_C` sem slave tem que voltar DECERR do crossbar e `ERR_CODE = 4`. Só dá para testar com o crossbar no lugar
+- [ ] **UVM integrado** em [`tb/uvm/`](tb/uvm/) (responsável: a definir)
+  - [ ] Carrega parâmetros e estímulos de várias dimensões e valores, a partir do `model/golden.py`
+  - [ ] Compara C com o golden model automaticamente
+- [ ] **Forma de onda do sistema completo**: a CPU configurando, o DMA movendo os dados, o systolic array calculando e C sendo gravado (enunciado §7)
+- [ ] **Makefile** com os alvos do top e do UVM, para rodar tudo sem intervenção manual
 
 ---
 
@@ -270,7 +301,7 @@ O perfil AXI4 do projeto (sinais, valores fixos, regras de handshake, bursts INC
 
 A interface foi revista para o prefetch (MAS §11): a porta de escrita dos buffers passou a 32 bits (`buf_word`, `buf_wdata[31:0]`), e entraram `buf_bank`, `tile_bank`, `last_k`, `c_valid` e `c_release`. Os papéis do enunciado continuam: **requisição** = `tile_start`, **pronto/ocupado** = `busy`, **conclusão** = `tile_done` (e `c_valid` para o resultado de C).
 
-> O RTL atual de [`rtl/accel/accel.v`](rtl/accel/accel.v) (Entrega 2) ainda usa a interface antiga, de 8 bits e sem bancos. A migração é o passo 3 do plano de construção do MAS (§17).
+> O [`rtl/accel/accel.v`](rtl/accel/accel.v) já usa essa interface nova (passo 3 do MAS §17). A interface de 8 bits da Entrega 2 não existe mais.
 
 ### 4.4 Interrupção
 
@@ -282,22 +313,26 @@ A interface foi revista para o prefetch (MAS §11): a porta de escrita dos buffe
 
 ![Acelerador output-stationary](docs/img/accel.svg)
 
-Fonte editável: [`docs/img/accel.drawio`](docs/img/accel.drawio). A figura já mostra a versão com bancos ping-pong e banco C (MAS §11); o texto abaixo descreve o RTL da Entrega 2.
+Fonte editável: [`docs/img/accel.drawio`](docs/img/accel.drawio). A figura e o texto abaixo descrevem o RTL atual, com bancos ping-pong e banco C (MAS §11).
 
-- **Buffers:** buf A e buf B guardam T×T elementos int8 cada, escritos pelo DMA pelo sideband (§4.3).
+- **Buffers:** buf A e buf B guardam T×T elementos int8 cada, escritos pelo DMA pelo sideband (§4.3). Cada escrita leva uma palavra de 32 bits, com 4 elementos da mesma linha; bytes que cairiam numa coluna ≥ T são ignorados.
+- **Bancos (`PINGPONG = 1`):** há dois bancos de A/B. A malha calcula no banco escolhido em `tile_bank` enquanto o DMA carrega o outro. Se o DMA tentar escrever no banco que a malha está usando, a escrita é descartada. Com `PINGPONG = 0` existe um banco só, como na Entrega 2.
 - **Streaming:** no passo t (0 … T−1), a linha i da malha recebe A[i][t] atrasado i ciclos e a coluna j recebe B[t][j] atrasado j ciclos (registradores de skew). Fora da janela entram zeros, que não alteram os acumuladores.
 - **PE:** `acc ← acc + a·b`; repassa `a` para a direita e `b` para baixo por registradores. O PE(i,j) recebe o par de índice k no ciclo k + i + j.
 - **Latência por tile:** 1 ciclo inicial (`clr_acc` zera os acumuladores se `first_k = 1`) + T passos + 2(T−1) de skew = **3T − 1 ciclos**; então `tile_done`.
-- **Leitura de C:** mux T²:1 sobre os acumuladores, endereçado por (`c_row`, `c_col`).
+- **Banco C e `c_valid`:** no fim de um tile com `last_k`, os T² acumuladores são copiados de uma vez para o banco C e `c_valid` sobe junto com `tile_done`. A malha fica livre para o próximo tile enquanto o DMA grava C. Se o tile seguinte terminar antes de o DMA devolver `c_release`, a malha para no estado `A_WAIT_C` (`busy = 1`, `acc_active = 0`) e só copia depois do release, para não apagar um C que ainda não foi gravado. Com `PINGPONG = 0` não há banco C: `c_valid` sobe do mesmo jeito, mas C é lido direto dos acumuladores.
+- **Leitura de C:** mux T²:1 sobre o banco C (ou sobre os acumuladores, com `PINGPONG = 0`), endereçado por (`c_row`, `c_col`). O dado sai no ciclo seguinte ao `c_rd`.
 - **O que escala com T:** T² MACs (multiplicador 8×8 + somador 32 bits), 2T² bytes de buffer, T² acumuladores de 32 bits e o mux de C. O caminho crítico do PE (multiplicador + somador) não depende de T; o mux de C cresce com log T.
 - **Ciclos de cálculo** para M×N×K: ⌈M/T⌉ · ⌈N/T⌉ · ⌈K/T⌉ tiles de 3T − 1 ciclos. O restante da latência é do DMA (2T² bytes por bloco k0 e T² palavras de C por tile) e é medido no registrador `CYCLES`.
 
 ### Como simular o testbench unitário do acelerador
 
 ```bash
-iverilog -g2012 -o sim_accel.vvp tb/unit_accel/tb_accel.v rtl/accel/pe.v rtl/accel/accel.v
-vvp sim_accel.vvp
+make tb_accel                 # Icarus
+make tb_accel SIM=xcelium     # Xcelium
 ```
+
+O alvo roda as seis configurações (T = 2, 4 e 8, com `PINGPONG` = 0 e 1). Além dos casos da Entrega 2, o TB-ACC testa dados aleatórios com vários blocos de K, valores extremos (−128 × −128), a escrita descartada no banco em uso, `tile_start` ignorado com a malha ocupada, a espera em `A_WAIT_C` e o tempo do `c_release`. Em todo tile ele também confere que `acc_active` ficou em 1 por exatamente 3T − 1 ciclos.
 
 ## 6. Máquinas de estado do DMA
 
@@ -314,6 +349,47 @@ O DMA tem uma FSM de controle e três FSMs concorrentes (carga, cálculo e grava
 | `dma_rd_engine` / `dma_wr_engine` | [`axi_rd_wr_fsm.svg`](docs/img/axi_rd_wr_fsm.svg) | Bursts AR/R e AW/W/B, divisão em 4 KB, padding |
 
 Com `PINGPONG = 0`, as mesmas FSMs se alternam (carga → cálculo → gravação), como na versão da Entrega 1.
+
+### 6.1 Como simular o DMA
+
+Tudo roda pelo `Makefile` na raiz. O simulador padrão é o Icarus; para usar o Xcelium (no WSL da CEPEDI, por exemplo), acrescente `SIM=xcelium`. O Python dos vetores precisa estar no PATH como `python3`.
+
+| Alvo | O que faz |
+|---|---|
+| `make lint` | Compila o DMA nas 6 configurações (T × `PINGPONG`) com `-Wall` e asserções, e de novo em Verilog-2005 puro. Qualquer aviso derruba o alvo |
+| `make selftest` | Autoteste do `axi_checker`: ele precisa acusar violações injetadas de propósito |
+| `make tb_regs`, `make tb_rd`, `make tb_wr` | TB-REGS, TB-RD e TB-WR (MAS §16.2) |
+| `make unit` | Os quatro alvos acima |
+| `make tb_accel` | TB-ACC nas 6 configurações (§5) |
+| `make tb_dma` | TB-DMA com o caso 6×5×7. Outra configuração: `make tb_dma T=8 PP=0` |
+| `make regress` | Matriz do MAS §16.3 (168 execuções), testes de erro e dreno da §16.4 e o critério de desempenho da §16.5 |
+| `make wave` | Forma de onda de uma operação completa: `build/wave_dma.shm` no Xcelium (abre no SimVision) ou `build/wave_dma.vcd` no Icarus (abre no GTKWave) |
+| `make clean` | Apaga `build/` |
+
+No TB-DMA, o BFM faz o papel da CPU e escreve nos registradores do DMA. O DMA lê A e B da memória, alimenta o `accel` real e grava C de volta. O TB confere C contra o `c_expected.hex` do golden model, exige que cada palavra de C seja gravada uma única vez (H7) e que nada fora de C mude. Também ficam ligados o `axi_checker` nas duas interfaces, as asserções H1–H6 do DMA e um monitor do protocolo entre DMA e acelerador.
+
+Para rodar o `tb_dma` na mão, ele aceita estes plusargs:
+
+| Plusarg | Para que serve |
+|---|---|
+| `+DMEM=<arq>` `+CEXP=<arq>` `+M=` `+K=` `+N=` | Vetores gerados pelo `model/golden.py` e dimensões da operação |
+| `+TEST=<n>` | 0 é a operação normal; de 1 a 9 são os testes de erro e dreno do MAS §16.4 |
+| `+STALL +SEED=<s>` | Backpressure aleatória no master do DMA |
+| `+SR_STEP=<n>` | Passo da varredura de `SOFT_RESET` do teste 6 (padrão 1) |
+| `+VCD=<arq>` | Grava a forma de onda em VCD |
+| `+TRACE` | Imprime cada AR/AW aceito, útil para conferir a tabela 8.3 do MAS |
+
+**Resultado atual** (Xcelium 24.09 e Icarus 12, mesmos números nos dois): 168/168 na matriz §16.3, 54/54 nos testes §16.4 e o TB-ACC passando nas 6 configurações. O ping-pong cumpre a §16.5. Abaixo, os ciclos sem backpressure (`PINGPONG = 0` / `PINGPONG = 1`):
+
+| Caso | T = 2 | T = 4 | T = 8 |
+|---|---|---|---|
+| 3 (6×5×7) | 1090 / 689 (−37 %) | 422 / 294 (−30 %) | 149 / 149 |
+| 6 (3×64×3) | 3433 / 2271 (−34 %) | 727 / 502 (−31 %) | 719 / 530 (−26 %) |
+| 16×16×16 | 14596 / 9493 (−35 %) | 3332 / 2237 (−33 %) | 1116 / 915 (−18 %) |
+
+Quando a operação inteira cabe num bloco só (caso 3 com T = 8, por exemplo), não há o que buscar adiantado e os dois modos empatam.
+
+Essa regressão ainda usa a memória comportamental `tb/models/axi_mem_model.v`. Quando o `axi_mem_ctrl` (passo 2 do MAS) ficar pronto, ele entra no lugar dela no `tb_dma.v` e a regressão precisa rodar de novo.
 
 ## 7. Sequência de uma operação completa
 
@@ -435,7 +511,7 @@ python model/golden.py --test-all
 |---|---|---|---|:---:|
 | 1 | 01/11/2026 | Planejamento, microarquitetura e golden model | Equipe | ✅ |
 | 2 | 14/11/2026 | RTL do MAC/systolic array + testbench unitário (2×2 e 4×4) | Equipe | ✅ |
-| 3 | 22/11/2026 | RTL do DMA e memória compartilhada + testbench integrado sem CPU | Augusto, Cedraz, Gabriel, Jair | ⏳ |
+| 3 | 22/11/2026 | RTL do DMA e memória compartilhada + testbench integrado sem CPU | Augusto, Cedraz, Gabriel, Jair | ⏳ falta o `axi_mem_ctrl` |
 | 4 | 13/12/2026 | Top-level, firmware e UVM integrado | Tássio, Jair, Gabriel, Cedraz | ⬜ |
 | Final | 18–19/12/2026 | Relatório técnico, síntese (≥ 3 configurações) e apresentação | Equipe (liderado por Jair e Gabriel) | ⬜ |
 
