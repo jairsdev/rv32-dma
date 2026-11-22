@@ -5,8 +5,8 @@
 | Campo | Valor |
 |---|---|
 | Documento | `docs/dma_mas.md` |
-| Versão | 1.1 (rascunho para revisão da equipe) |
-| Data | 11/11/2026 |
+| Versão | 1.2 (rascunho para revisão da equipe) |
+| Data | 21/11/2026 |
 | Responsável pelo DMA | Luiz Augusto dos Santos Oliveira ([@guto7191](https://github.com/guto7191)) |
 | Interconexão AXI | João Vítor Cedraz Carneiro ([@JvCedrazC](https://github.com/JvCedrazC)) |
 | Status | Em revisão. Nada aqui está implementado em RTL ainda |
@@ -18,6 +18,7 @@
 |---|---|---|
 | 1.0 | 11/11/2026 | Primeira versão: sistema em AXI4 com burst INCR, prefetch com bancos ping-pong, parâmetro `PINGPONG` |
 | 1.1 | 11/11/2026 | Revisão da auditoria: motores com fila de 1 comando; dreno que para na linha e só termina com as FSMs paradas; reset dos bancos no `CHECK`; `last_blk` no lugar de `n_blocks`; `c_release` com tempo definido; `acc_busy`/`acc_active`; `ADDR_*[1:0]` armazenados; fórmula do ping-pong com gargalo de escrita; forma de onda de escrita corrigida |
+| 1.2 | 21/11/2026 | `axi_mem_ctrl` implementado com o frontend AXI4 do projeto `interface_amba` e uma SRAM on-chip (12.2); L e `W_OV` medidos no TB-MEM e no TB-DMA, com as tabelas 7.1, 7.2, 7.5 e 14.2 recalculadas para L = 2 e `W_OV` = 3; TB-MEM; TB-RD, TB-WR e TB-DMA com `MEM=ctrl\|model` (16.2); teste 4 da 16.4 em SKIP com o `axi_mem_ctrl` |
 
 ### Como ler este documento
 
@@ -245,6 +246,8 @@ BREADY     ____________________________________________/‾‾‾\___
 - **Ciclo 2:** o controlador entra em `M_WR` e dá `WREADY`. Os beats são aceitos nos ciclos 2, 3 e 5 a 10; no ciclo 4 o slave segura com `WREADY = 0`.
 - **Ciclo 11:** depois do `WLAST` no ciclo 10, o controlador vai para `M_WR_RESP`, `BVALID` sobe e o motor, em `W_RESP`, dá `BREADY`.
 
+> **Nota (v1.2):** esta forma de onda foi escrita para a FSM `M_IDLE/M_WR/M_WR_RESP` prevista na v1.1. O `axi_mem_ctrl` implementado (12.2) é diferente por dentro, mas o custo visto pelo DMA é o mesmo: o AW e o primeiro beat de W são aceitos juntos, e o B sobe 2 ciclos depois do `WLAST`. Medido no TB-DMA, cada linha de C custa T + 3 ciclos do `AWVALID` ao B (`W_OV` = 3).
+
 ---
 
 ## 5. Arquitetura do DMA
@@ -413,7 +416,7 @@ Com **um único banco** de A/B e com C guardado nos próprios acumuladores (o pr
 2. A malha não pode começar o próximo tile enquanto o DMA lê C, porque `first_k` zeraria os acumuladores antes de C ser gravado.
 3. Durante a carga, a malha fica parada esperando dados.
 
-Linha do tempo sem ping-pong (8×8×8, T = 4, L = 3; 2 blocos k0 por tile):
+Linha do tempo sem ping-pong (8×8×8, T = 4, L = 2 e `W_OV` = 3 como medidos na 14.1; 2 blocos k0 por tile):
 
 ```mermaid
 gantt
@@ -421,22 +424,22 @@ gantt
     dateFormat X
     axisFormat %s
     section Leitura AXI
-    Bloco t0.k0  :0, 32
-    Bloco t0.k1  :43, 75
-    Bloco t1.k0  :114, 146
+    Bloco t0.k0  :0, 24
+    Bloco t0.k1  :35, 59
+    Bloco t1.k0  :98, 122
     section Malha
-    Calc t0.k0   :32, 43
-    Calc t0.k1   :75, 86
-    Calc t1.k0   :146, 157
+    Calc t0.k0   :24, 35
+    Calc t0.k1   :59, 70
+    Calc t1.k0   :122, 133
     section Escrita AXI
-    C do tile 0  :86, 114
+    C do tile 0  :70, 98
 ```
 
-Nos 157 ciclos mostrados, a malha trabalha só 33 (21 %). O canal de leitura fica parado sempre que a malha calcula ou o C é gravado.
+Nos 133 ciclos mostrados, a malha trabalha só 33 (25 %). O canal de leitura fica parado sempre que a malha calcula ou o C é gravado.
 
 ### 7.2 Custo de cada fase
 
-Fórmulas do modelo analítico (L = latência de leitura, ~3 ciclos; `W_OV` = custo fixo de um burst de escrita, AW + resposta B, ~3 ciclos):
+Fórmulas do modelo analítico (L = latência de leitura, do `ARVALID` ao primeiro `RVALID`; `W_OV` = custo fixo de um burst de escrita, do `AWVALID` ao B menos os beats). Os valores são os medidos no TB-DMA com o `axi_mem_ctrl` (14.1): **L = 2 e `W_OV` = 3**.
 
 | Fase | Fórmula | Origem |
 |---|---|---|
@@ -446,12 +449,12 @@ Fórmulas do modelo analítico (L = latência de leitura, ~3 ciclos; `W_OV` = cu
 
 | T | Carga/bloco | Cálculo/bloco | Gravação/tile |
 |---|---|---|---|
-| 2 | 16 | 5 | 10 |
-| 4 | 32 | 11 | 28 |
-| 8 | 80 | 23 | 88 |
+| 2 | 12 | 5 | 10 |
+| 4 | 24 | 11 | 28 |
+| 8 | 64 | 23 | 88 |
 
 Duas observações guiam o projeto:
-- **A carga domina o cálculo** em todas as configurações (16 × 5, 32 × 11, 80 × 23). A malha está limitada pela memória, não pelo cálculo.
+- **A carga domina o cálculo** em todas as configurações (12 × 5, 24 × 11, 64 × 23). A malha está limitada pela memória, não pelo cálculo.
 - **A gravação de C cresce com T²** e, em T = 8, passa a ser a maior fase de todas (88 ciclos).
 
 ### 7.3 Por que 2 bancos de A/B
@@ -496,19 +499,19 @@ Modelo analítico em ciclos (fórmulas na 14.1). A coluna "Só A/B" mostra o que
 
 | Caso (M×K×N) | T | Serial (`PINGPONG=0`) | Só A/B | A/B + C (`PINGPONG=1`) | Ganho |
 |---|---|---|---|---|---|
-| 8×8×8 | 2 | 1504 | 1189 | 1039 | 31 % |
-| 8×8×8 | 4 | 456 | 379 | 295 | 35 % |
-| 8×8×8 | 8 | 191 | 191 | 191 | 0 % |
-| 16×16×16 | 4 | 3200 | 2507 | 2087 | 35 % |
-| 16×16×16 | 8 | 1176 | 1015 | 751 | 36 % |
-| 6×5×7 | 4 | 456 | 379 | 295 | 35 % |
+| 8×8×8 | 2 | 1248 | 933 | 783 | 37 % |
+| 8×8×8 | 4 | 392 | 315 | 231 | 41 % |
+| 8×8×8 | 8 | 175 | 175 | 175 | 0 % |
+| 16×16×16 | 4 | 2688 | 1995 | 1575 | 41 % |
+| 16×16×16 | 8 | 1048 | 887 | 623 | 41 % |
+| 6×5×7 | 4 | 392 | 315 | 231 | 41 % |
 
 Como ler esses números:
 
 1. **De onde vem o ganho:** de esconder cálculo e gravação atrás da carga, que é a fase dominante.
-   - **Teto do ganho:** com muitos tiles (sem enchimento e esvaziamento do pipeline) e `kb · Ld ≥ St`, o ganho tende a `(kb · Cp + St) / (kb · (Ld + Cp) + St)`. Isso dá ≈ 44 % em T = 4 com kb = 2 e ≈ 46 % em T = 8 com kb = 2.
-   - **Valores da tabela:** os ≈ 35 % são menores porque os casos têm poucos tiles, e o primeiro bloco e o último C não se sobrepõem a nada.
-   - **Com K grande:** kb cresce, St pesa menos, e o ganho cai para perto de `Cp / (Ld + Cp)` (≈ 26 % em T = 4).
+   - **Teto do ganho:** com muitos tiles (sem enchimento e esvaziamento do pipeline) e `kb · Ld ≥ St`, o ganho tende a `(kb · Cp + St) / (kb · (Ld + Cp) + St)`. Isso dá ≈ 51 % em T = 4 e em T = 8, com kb = 2.
+   - **Valores da tabela:** os ≈ 41 % são menores porque os casos têm poucos tiles, e o primeiro bloco e o último C não se sobrepõem a nada.
+   - **Com K grande:** kb cresce, St pesa menos, e o ganho cai para perto de `Cp / (Ld + Cp)` (≈ 31 % em T = 4).
 2. **Quando não há ganho:** com 1 tile e 1 bloco (matriz ≤ T, como 8×8×8 em T = 8) não existe "próximo bloco" para buscar. O ping-pong só paga quando há vários blocos ou tiles, que é justamente o caso do tiling, um requisito do enunciado (§4).
 3. **O modelo é um limite superior:** a DMEM é uma SRAM **single-port** (seção 12.2). Leitura e escrita do DMA disputam o `axi_mem_ctrl`, que atende uma transação por vez, então o ganho real fica abaixo do estimado. Por isso o `PINGPONG=0` existe: o número final vem de `CYCLES` medido em simulação, não desta tabela.
 
@@ -1017,25 +1020,32 @@ FSM de cada árbitro (por slave e direção):
 
 ### 12.2 `axi_mem_ctrl` — slave AXI4 para a DMEM
 
-![FSM axi_mem_ctrl](img/axi_mem_ctrl_fsm.svg)
+![Blocos do axi_mem_ctrl](img/axi_mem_ctrl_blocks.svg)
+
+Fonte editável: [`img/axi_mem_ctrl_blocks.drawio`](img/axi_mem_ctrl_blocks.drawio).
+
+**Implementação.** O RTL é [`rtl/top/axi_mem_ctrl.v`](../rtl/top/axi_mem_ctrl.v) (filelist `rtl/top/axi_mem_ctrl.f`). Ele junta duas partes:
+- **Frontend AXI4:** copiado do projeto [`interface_amba`](https://github.com/guto7191/interface_amba), branch `Implementacion_uvm_axi_sram`, commit `8f95bf24`. Fica em [`rtl/third_party/interface_amba/`](../rtl/third_party/interface_amba/), com a origem, a licença (LGPL no `axi_transaction_manager`) e as alterações no README da pasta.
+- **SRAM on-chip:** [`rtl/top/sram_controller_onchip.v`](../rtl/top/sram_controller_onchip.v), no lugar da controladora da SRAM externa de 16 bits daquele projeto. As duas partes conversam pelo contrato `ram_*` do `interface_amba`, que foi feito para que a controladora possa ser trocada.
+
+| Bloco | Origem | Função |
+|---|---|---|
+| `axi_address_decoder` | `interface_amba`, regras alteradas (R1–R4) | Barra o que está fora do perfil ou da faixa e completa o burst com SLVERR sem acessar a SRAM. Pedidos válidos passam direto, sem ciclo extra |
+| `axi_transaction_manager` | `interface_amba` (obra derivada da IP Ultra-Embedded) | Arbitragem AR/AW, endereço de cada beat, FIFO de pedidos e FIFO de respostas de 4 entradas, B depois do último beat |
+| `axi_narrow_read_align` | `interface_amba`, sem alteração | Posiciona o dado lido na byte lane certa. Com `AxSIZE` fixo em 4 bytes é passagem direta |
+| `sram_controller_onchip` | nosso | SRAM síncrona single-port de 16 K × 32, escrita por byte. Aceita 1 pedido por ciclo e responde 1 ciclo depois |
 
 | Item | Especificação |
 |---|---|
-| Memória | SRAM síncrona **single-port**, 16 K palavras × 32 bits (64 KiB), escrita por byte (`WSTRB`), leitura com 1 ciclo de latência; carregada por `$readmemh` |
-| Índice | `addr[15:2]`. `addr[27:16] ≠ 0` → `SLVERR` (sem aliasing) |
-| Arbitragem interna | Single-port: uma transação por vez. Com AR e AW pendentes, alterna (round-robin por transação) |
-| Leitura | Pipeline de 2 estágios + fila de 2 entradas: entrega **1 beat por ciclo** com `RREADY = 1`. Latência do handshake de AR ao primeiro `RVALID` = 2 ciclos |
-| Escrita | `WREADY = 1` em `M_WR`; cada beat escreve a SRAM com `WSTRB`; o endereço incrementa; no `WLAST`, vai para `M_WR_RESP` |
+| Memória | SRAM síncrona **single-port**, 16 K palavras × 32 bits (64 KiB), escrita por byte (`WSTRB`), leitura com 1 ciclo de latência. Parâmetro `INIT_FILE` para `$readmemh` |
+| Índice | `addr[15:2]`. `addr[27:16] ≠ 0`, no início ou no fim do burst → `SLVERR` (sem aliasing). `addr[31:28]` não é decodificado: quem separa os slaves pelo prefixo é o xbar (12.1) |
+| IDs | `ID_W` bits na porta (2 no sistema, `S_ID_W`); o frontend usa 4 bits internamente |
+| Arbitragem interna | Single-port: uma transação por vez. Com AR e AW pendentes, alterna (round-robin por transação). O segundo comando é aceito logo depois do último beat do primeiro ir para a SRAM, sem esperar o B |
+| Leitura | **1 beat por ciclo** com `RREADY = 1`. Latência do handshake de AR ao primeiro `RVALID` = 2 ciclos |
+| Escrita | AW e o primeiro beat de W são aceitos juntos; depois, **1 beat por ciclo**; B 2 ciclos depois do `WLAST` |
 | Fora do perfil | `AxBURST ≠ INCR` ou `AxSIZE ≠ 2`: completa os beats sem acessar a SRAM, com `SLVERR` (4.3) |
 
-| Estado | Ações | Próximo |
-|---|---|---|
-| `M_IDLE` | Escolhe AR ou AW (round-robin); dá `ARREADY` ou `AWREADY` por 1 ciclo; guarda endereço, LEN e ID | `M_RD` · `M_WR` |
-| `M_RD` | Lê a SRAM no endereço `a`; `a += 4` enquanto a fila tiver espaço; `RVALID` = fila não vazia; `RLAST` no último beat | `M_IDLE` após o handshake do último beat |
-| `M_WR` | `WREADY = 1`; escreve cada beat; `a += 4` | `M_WR_RESP` no `WLAST` |
-| `M_WR_RESP` | `BVALID = 1`, `BRESP`, `BID` | `M_IDLE` com `BREADY` |
-
-Com a latência do xbar (1 ciclo de grant), L ≈ 3 ciclos, o valor usado no modelo da seção 7.
+Medido no TB-MEM (16.2), sem backpressure: L = 2 do `ARVALID` ao primeiro `RVALID` (o `ARREADY` sai no mesmo ciclo), leitura e escrita de 1 beat por ciclo, e `W_OV` = 2 com W junto do AW. No TB-DMA, o `WVALID` do DMA só sobe 1 ciclo depois do `AWVALID` (10.2), então cada linha de C custa T + 3 (`W_OV` = 3). Com o xbar da Entrega 4 (1 ciclo de grant), espera-se L ≈ 3.
 
 ### 12.3 `cpu_axi_adapter` — Porta D → master AXI4 M0
 
@@ -1099,7 +1109,7 @@ Variáveis:
 | `PINGPONG = 0` | `tiles · (kb·(Ld + Cp) + St)` |
 | `PINGPONG = 1` | `kb·Ld + (tiles − 1) · max(kb · max(Ld, Cp), St) + Cp + St` |
 
-No `PINGPONG = 1`, a parcela `kb·Ld` é a carga do primeiro tile (enchimento do pipeline) e `Cp + St` é o cálculo e a gravação do último (esvaziamento). Cada tile intermediário custa o maior entre a carga dos seus blocos e a gravação do tile anterior: o banco C só libera quando a gravação termina. Quando `kb·Ld ≥ St`, a fórmula se reduz a `tiles · kb · Ld + Cp + St`, que é o caso de todas as linhas da 14.2. O termo `St` só domina com T = 8 e kb = 1, por exemplo 16×8×16 (T = 8, 4 tiles): 80 + 3·88 + 23 + 88 = 455 ciclos.
+No `PINGPONG = 1`, a parcela `kb·Ld` é a carga do primeiro tile (enchimento do pipeline) e `Cp + St` é o cálculo e a gravação do último (esvaziamento). Cada tile intermediário custa o maior entre a carga dos seus blocos e a gravação do tile anterior: o banco C só libera quando a gravação termina. Quando `kb·Ld ≥ St`, a fórmula se reduz a `tiles · kb · Ld + Cp + St`, que é o caso de todas as linhas da 14.2. O termo `St` só domina com T = 8 e kb = 1, por exemplo 16×8×16 (T = 8, 4 tiles): 64 + 3·88 + 23 + 88 = 439 ciclos.
 
 **O que as fórmulas não incluem:**
 - Linhas de padding, mais rápidas porque não acessam a memória.
@@ -1107,9 +1117,10 @@ No `PINGPONG = 1`, a parcela `kb·Ld` é a carga do primeiro tile (enchimento do
 - Os ciclos de CHECK/ERROR/DONE.
 - O handshake entre blocos no compute (`tile_done` → `C_FREE` → `C_WAIT_FULL` → `C_START`, ≈ 3 ciclos por bloco). Ele fica escondido atrás da carga com `PINGPONG = 1` e soma com `PINGPONG = 0`.
 - O handshake entre linhas fica escondido pela fila de comando dos motores (5.4). Sem ela, cada linha custaria ≈ 4 ciclos a mais.
-- **L e `W_OV` são estimativas:**
-  - L = 3 inclui a arbitragem do xbar; no TB-DMA, com M1 direto na memória, L ≈ 2.
-  - `W_OV` = 3 é otimista: a forma de onda da 4.4 leva T + 4 ciclos por linha de C.
+- **L e `W_OV` foram medidos** no TB-DMA com o `axi_mem_ctrl`, sem backpressure, por burst, nas 6 configurações (caso 16×16×16):
+  - L = 2 sempre com `PINGPONG = 0`. Com `PINGPONG = 1`, a média sobe para 2,03 a 3,29 por causa da disputa da SRAM single-port entre leitura e escrita, que a fórmula não modela.
+  - `W_OV` = 3 em todas as linhas de C. O TB-MEM mede 2, mas no DMA o `WVALID` sobe 1 ciclo depois do `AWVALID` (10.2).
+  - Sem o xbar: a grant registrada dele (12.1) deve somar ~1 ciclo ao L. As tabelas serão refeitas com o TB-TOP na Entrega 4.
 
 **São estimativas para o projeto. O número oficial é sempre o `CYCLES` medido.**
 
@@ -1117,11 +1128,11 @@ No `PINGPONG = 1`, a parcela `kb·Ld` é a carga do primeiro tile (enchimento do
 
 | Caso | T | `PINGPONG=0` | `PINGPONG=1` |
 |---|---|---|---|
-| 8×8×8 | 2 / 4 / 8 | 1504 / 456 / 191 | 1039 / 295 / 191 |
-| 16×16×16 | 2 / 4 / 8 | 11392 / 3200 / 1176 | 8207 / 2087 / 751 |
-| 6×5×7 | 2 / 4 / 8 | 876 / 456 / 191 | 591 / 295 / 191 |
+| 8×8×8 | 2 / 4 / 8 | 1248 / 392 / 175 | 783 / 231 / 175 |
+| 16×16×16 | 2 / 4 / 8 | 9344 / 2688 / 1048 | 6159 / 1575 / 623 |
+| 6×5×7 | 2 / 4 / 8 | 732 / 392 / 175 | 447 / 231 / 175 |
 
-**Gargalo:** em regime, o canal de leitura (carga) limita tudo. O cálculo em T = 8 (23 ciclos) usa só ~29 % do tempo de carga (80 ciclos). Esse é o argumento quantitativo de que **aumentar T aumenta o paralelismo da malha, mas o ganho é limitado pela banda de memória de 32 bits**. É a conclusão que o enunciado pede no §10.c.iv.
+**Gargalo:** em regime, o canal de leitura (carga) limita tudo. O cálculo em T = 8 (23 ciclos) usa só ~36 % do tempo de carga (64 ciclos). Esse é o argumento quantitativo de que **aumentar T aumenta o paralelismo da malha, mas o ganho é limitado pela banda de memória de 32 bits**. É a conclusão que o enunciado pede no §10.c.iv.
 
 ### 14.3 Uso no relatório
 
@@ -1157,7 +1168,7 @@ No `PINGPONG = 1`, a parcela `kb·Ld` é a carga do primeiro tile (enchimento do
 ### 15.2 Síntese
 
 - **Configurações:** sintetizar `accel` + `dma` para T = 2, 4, 8 e `PINGPONG` = 0, 1. São 6 configurações; o enunciado pede no mínimo 3.
-- **SRAMs fora da síntese** (README §10): `axi_mem_ctrl` usa um modelo comportamental, e só a lógica de controle entra.
+- **SRAMs fora da síntese** (README §10): a SRAM do `axi_mem_ctrl` (`sram_controller_onchip`) é escrita no padrão que as ferramentas inferem como bloco de RAM. Se a síntese puder excluir as SRAMs (18.3), só o frontend AXI entra.
 - **Caminhos críticos esperados:**
   - PE (multiplicador 8×8 + somador 32 bits), que não depende de T.
   - Mux de C (T²:1), que cresce com log T.
@@ -1181,7 +1192,7 @@ No `PINGPONG = 1`, a parcela `kb·Ld` é a carga do primeiro tile (enchimento do
 
 | ID | Arquivo | DUT | O que prova | Entrega |
 |---|---|---|---|---|
-| TB-MEM | `tb/unit_mem/tb_axi_mem_ctrl.v` | `axi_mem_ctrl` | Bursts de 1–16 beats, `WSTRB` parcial, leitura 1 beat/ciclo, SLVERR fora do perfil e fora do range, alternância AR/AW | 3 |
+| TB-MEM | `tb/unit_mem/tb_axi_mem_ctrl.v` | `axi_mem_ctrl` | Bursts de 1–16 beats, `WSTRB` parcial, leitura e escrita de 1 beat/ciclo, medição de L e `W_OV`, SLVERR fora do perfil e fora do range com o burst inteiro, alternância AR/AW, com e sem backpressure | 3 |
 | TB-ACC | `tb/unit_accel/tb_accel.v` | `accel` | Regressão da Entrega 2 com porta de 32 bits; bancos; `last_k` e banco C; espera em `A_WAIT_C`; tempo do `c_release`; `acc_active`; `PINGPONG` = 0/1 | 3 |
 | TB-REGS | `tb/unit_dma/tb_dma_regs.v` | `dma_regs` | Leitura/escrita de cada registrador, W1C, `irq`, escrita ignorada com `BUSY`, burst → SLVERR | 3 |
 | TB-RD | `tb/unit_dma/tb_dma_rd_engine.v` | `dma_rd_engine` + `axi_mem_ctrl` | Linhas com `nbytes` = 0…T, T = 2/4/8, `off` = 2 em T = 2, divisão em 4 KB, `MAX_BURST` pequeno, RRESP de erro | 3 |
@@ -1189,6 +1200,10 @@ No `PINGPONG = 1`, a parcela `kb·Ld` é a carga do primeiro tile (enchimento do
 | TB-DMA | `tb/unit_dma/tb_dma.v` | `dma` + `axi_mem_ctrl` + `accel` (M1 ligado direto à memória; BFM nos regs) | Operação completa: DMEM carregada de `model/dmem.hex`, comparação com `model/c_expected.hex`, `irq`, `CYCLES` | **3** |
 | TB-XBAR | `tb/unit_xbar/tb_axi_xbar.v` | `axi_xbar` | Decodificação, round-robin, travamento por burst, rota de W, IDs, DECERR com burst | 4 |
 | TB-TOP | `tb/uvm/` | Sistema completo | UVM integrado (enunciado §7) | 4 |
+
+TB-RD, TB-WR e TB-DMA escolhem a DMEM com `MEM` no Makefile (`--mem` no script de regressão): `ctrl` (padrão) usa o `axi_mem_ctrl`, e `model` usa a memória comportamental `tb/models/axi_mem_model.v`, que imita o 12.2 e foi usada até o controlador existir. Duas exceções:
+- os modos `+WFIRST` do TB-WR (W inteiro aceito antes do AW) rodam sempre com o `axi_mem_model`, porque o `axi_mem_ctrl` só aceita W com o AW presente;
+- o teste 4 da 16.4 só roda com o `axi_mem_model` (ver lá).
 
 ### 16.3 Matriz de regressão do TB-DMA
 
@@ -1206,7 +1221,7 @@ No `PINGPONG = 1`, a parcela `kb·Ld` é a carga do primeiro tile (enchimento do
 1. `DIM_K = 0` → `ERR_CODE = 1`, sem nenhum AR/AW no checker.
 2. `ADDR_B = 0x1000_4002` → `ERR_CODE = 2`.
 3. `ADDR_A` fora da DMEM (`0x1002_0000`) → SLVERR → `ERR_CODE = 3`, dreno completo, `DONE`, `irq`.
-4. `ADDR_C = 0x2000_0000` (DECERR no xbar, Entrega 4) → `ERR_CODE = 4`.
+4. `ADDR_C = 0x2000_0000` (DECERR no xbar, Entrega 4) → `ERR_CODE = 4`. Até o xbar existir, o DECERR vem do `axi_mem_model`, que faz o papel do slave padrão. Com `MEM=ctrl` o teste é marcado como SKIP, porque o `axi_mem_ctrl` não decodifica `addr[31:28]` (12.2).
 5. `SOFT_RESET` no meio da operação → volta a `IDLE` sem transação AXI pendurada (o checker acusa se houver).
 6. `stop` em cada estado: repetir o teste 5 com o `SOFT_RESET` disparado em ciclos sucessivos (varredura de 1 a `CYCLES` do caso 3), cobrindo `stop` em cada estado de load, compute e store. Em todas as execuções: o DRAIN termina, nenhum AR/AW sai depois de `BUSY` cair (H6) e `irq` não sobe.
 7. Erro seguido de nova operação: depois do teste 3, reconfigurar com endereços válidos e dar `START`. C tem de sair idêntico ao golden. Isso prova o reset dos bancos no `CHECK` (7.8).
@@ -1271,7 +1286,7 @@ Cada passo só começa quando os passos de que depende passaram no critério de 
 | D1 | AXI4 com burst no sistema inteiro | Só no caminho do DMA; manter AXI4-Lite | Um único protocolo no xbar e na memória; burst reduz o custo por palavra |
 | D2 | Só INCR, `AxSIZE` = 4 bytes, `AxLEN ≤ 15`, 1 leitura + 1 escrita em andamento | Múltiplas transações com IDs; bursts até 256 | As linhas têm no máximo 8 palavras; 1 em andamento por direção já permite carga e gravação simultâneas e mantém a verificação simples |
 | D3 | 1 burst por linha de tile, tiling inalterado | Painéis T × K em bursts longos | Golden model e buffers não mudam; o ganho vem do prefetch |
-| D4 | Ping-pong de A/B + banco C, com parâmetro `PINGPONG` | Só A/B; sem prefetch | Seção 7: ~35 % a menos de ciclos com vários blocos; o parâmetro permite medir |
+| D4 | Ping-pong de A/B + banco C, com parâmetro `PINGPONG` | Só A/B; sem prefetch | Seção 7: ~40 % a menos de ciclos com vários blocos; o parâmetro permite medir |
 | D5 | Porta dos buffers com 32 bits | DMA serializa 4 bytes | Aceita 1 beat por ciclo sem segurar `RREADY` |
 | D6 | Registradores: burst recebe SLVERR completo | Burst nos registradores | Protocolo sempre fechado, sem caso especial |
 | D7 | IDs: masters com `ID_W = 1` fixo em 0; xbar acrescenta o índice do master | IDs distintos por master | Mínimo que o AXI4 exige para rotear respostas |
@@ -1298,5 +1313,5 @@ Cada passo só começa quando os passos de que depende passaram no critério de 
 
 1. **Para o professor:** trocar AXI4-Lite por AXI4 depois da Entrega 1 precisa ser comunicado ou justificado formalmente?
 2. **Para o professor:** a síntese pode excluir as SRAMs (README §10)?
-3. **Para a equipe:** medir L e `W_OV` no TB-MEM e no TB-DMA e atualizar as tabelas 7.2, 7.5 e 14.2 com os valores reais. A forma de onda da 4.4 sugere `W_OV` ≈ 4, não 3 (14.1).
+3. ~~**Para a equipe:** medir L e `W_OV` no TB-MEM e no TB-DMA e atualizar as tabelas 7.2, 7.5 e 14.2 com os valores reais.~~ **Resolvido na v1.2:** L = 2 e `W_OV` = 3 medidos no TB-DMA (14.1); tabelas recalculadas. Falta repetir a medição com o xbar (Entrega 4).
 4. **Para a equipe:** definir a ferramenta de síntese (impacta 15.2).
