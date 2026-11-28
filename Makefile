@@ -44,7 +44,7 @@ SMOKE      := $(BUILD)/vec/smoke
 SMOKE_ARGS := +DMEM=$(SMOKE)/dmem.hex +CEXP=$(SMOKE)/c_expected.hex +M=6 +K=5 +N=7
 TB_DMA_SRC := tb/unit_dma/tb_dma.v $(TB_AXI) $(ACCEL) $(RTL) $(MEM_SRC)
 
-.PHONY: all lint selftest tb_regs tb_rd tb_wr tb_mem tb_accel tb_dma unit regress wave clean
+.PHONY: all lint selftest tb_regs tb_rd tb_wr tb_mem tb_accel tb_dma unit regress wave fw tb_fw clean
 
 all: lint unit tb_accel tb_dma
 
@@ -174,6 +174,59 @@ else
 	$(IVERILOG) $(MEM_DEF_IV) -P tb_dma.ARRAY_SIZE=$(T) -P tb_dma.PINGPONG=$(PP) -o $(BUILD)/tb_dma.vvp $(TB_DMA_SRC) $(COMPILE_CLEAN)
 	$(VVP) $(BUILD)/tb_dma.vvp $(SMOKE_ARGS) +VCD=$(BUILD)/wave_dma.vcd | grep -E "PASS|FAIL"
 	@echo "Forma de onda: $(BUILD)/wave_dma.vcd (abrir com gtkwave)"
+endif
+
+# --------------------------------------------------------------------------
+# Firmware (sw/) e TB-FW: o firmware rodando na CPU, com o DMA e a DMEM reais
+# --------------------------------------------------------------------------
+FW_DIR := $(BUILD)/fw
+FW_HEX := $(FW_DIR)/firmware.hex
+CASE6  := $(BUILD)/vec/case6
+
+# A CPU multiciclo ainda so existe na branch processor-rv32i. Ate o merge, o
+# TB-FW usa o rtl/cpu dessa branch, extraido para build/cpu_branch; depois do
+# merge, rode com CPU_DIR=rtl/cpu (ou mude o padrao aqui).
+CPU_BRANCH ?= origin/processor-rv32i
+CPU_DIR    ?= $(BUILD)/cpu_branch/rtl/cpu
+CPU_SRC     = $(addprefix $(CPU_DIR)/,rv32i_cpu.v controller.v alu.v alu_controller.v \
+                imm_gen.v reg_bank.v imem.v)
+
+TB_FW_SRC = sw/mailbox_pkg.sv tb/unit_fw/tb_fw.v $(TB_AXI) $(ACCEL) $(RTL) $(MEM_SRC) $(CPU_SRC)
+
+# Monta o firmware e gera o mailbox.h e o mailbox_pkg.sv a partir do mailbox.inc
+fw: $(FW_HEX)
+
+$(FW_HEX): sw/firmware.s sw/mailbox.inc sw/rvasm.py | $(BUILD)
+	@mkdir -p $(FW_DIR)
+	$(PYTHON) sw/rvasm.py sw/firmware.s -o $@ -l $(FW_DIR)/firmware.lst
+	$(PYTHON) sw/rvasm.py --defs c  sw/mailbox.inc -o sw/mailbox.h
+	$(PYTHON) sw/rvasm.py --defs sv sw/mailbox.inc -o sw/mailbox_pkg.sv
+	@echo "firmware: $$(wc -l < $@) instrucoes em $@ (listagem em $(FW_DIR)/firmware.lst)"
+
+$(BUILD)/cpu_branch/rtl/cpu/rv32i_cpu.v: | $(BUILD)
+	@mkdir -p $(BUILD)/cpu_branch
+	git archive $(CPU_BRANCH) rtl/cpu | tar -x -C $(BUILD)/cpu_branch
+
+$(CASE6)/c_expected.hex: model/golden.py | $(BUILD)
+	$(PYTHON) model/golden.py --case 6 --seed 1 --out-dir $(CASE6) > /dev/null
+
+# TB-FW nas 6 configuracoes, sem e com backpressure no M1
+tb_fw: $(FW_HEX) $(SMOKE)/c_expected.hex $(CASE6)/c_expected.hex $(CPU_DIR)/rv32i_cpu.v
+	@echo "TB-FW com MEM=$(MEM) e a CPU de $(CPU_DIR)"
+ifeq ($(SIM),xcelium)
+	@for t in 2 4 8; do for pp in 0 1; do for st in "" "+STALL +SEED=5"; do \
+	  $(XRUN) $(MEM_DEF_XR) -top tb_fw -defparam tb_fw.ARRAY_SIZE=$$t -defparam tb_fw.PINGPONG=$$pp \
+	    -xmlibdirname $(BUILD)/xcelium_fw -l $(BUILD)/tb_fw.log $(TB_FW_SRC) $$st > /dev/null; \
+	  grep -hE "TB_FW|FALHA|SKIP|\*[EF]," $(BUILD)/tb_fw.log; \
+	done; done; done
+else
+	@for t in 2 4 8; do for pp in 0 1; do \
+	  $(IVERILOG) $(MEM_DEF_IV) -P tb_fw.ARRAY_SIZE=$$t -P tb_fw.PINGPONG=$$pp \
+	    -o $(BUILD)/tb_fw.vvp $(TB_FW_SRC) $(COMPILE_CLEAN) || exit 1; \
+	  for st in "" "+STALL +SEED=5"; do \
+	    $(VVP) $(BUILD)/tb_fw.vvp $$st | grep -E "TB_FW|FALHA|SKIP"; \
+	  done; \
+	done; done
 endif
 
 clean:
