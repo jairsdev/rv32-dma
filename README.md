@@ -103,9 +103,12 @@ Objetivo: garantir que o grupo entendeu o escopo e definiu como os módulos se c
 - [ ] **Adapter da CPU e top-level** (passo 10 do MAS, sugerido para Tássio e Cedraz)
   - [ ] `rtl/top/cpu_axi_adapter.v`: Porta D da CPU → master M0
   - [ ] `rtl/top/top.v` instanciando CPU, IMEM, crossbar, `axi_mem_ctrl`, DMA e acelerador
-- [ ] **Firmware** em [`sw/`](sw/) (responsável: a definir)
-  - [ ] Programa em C ou Assembly que configura `ADDR_A/B/C` e `DIM_M/N/K`, dá START com `IRQ_EN`, espera no `wfi` e confere o STATUS (§7)
-  - [ ] Linker script com `.data` e `.rodata` na DMEM (§10) e o binário `.hex` carregado na IMEM
+- [x] **Firmware** em [`sw/`](sw/) (Jair), com a caixa de correio do plano de verificação ([`sw/README.md`](sw/README.md))
+  - [x] [`sw/firmware.s`](sw/firmware.s), em Assembly: lê o job na caixa de correio (`0x1000_0000`), configura `ADDR_A/B/C` e `DIM_M/N/K`, dá START com `IRQ_EN`, espera no `wfi` (ou por polling) e devolve STATUS, CYCLES e CYC_COMPUTE na caixa (§7)
+  - [x] Sem `.data` e sem pilha, então não precisa de linker script. O `.hex` da IMEM sai do montador [`sw/rvasm.py`](sw/rvasm.py) (`make fw`), conferido bit a bit contra os 13 programas da branch `processor-rv32i`
+  - [x] Formato da caixa em [`sw/mailbox.inc`](sw/mailbox.inc), exportado para C ([`sw/mailbox.h`](sw/mailbox.h)) e SystemVerilog ([`sw/mailbox_pkg.sv`](sw/mailbox_pkg.sv)) para o UVM
+  - [x] TB-FW ([`tb/unit_fw/tb_fw.v`](tb/unit_fw/tb_fw.v)): o firmware na CPU multiciclo com DMA, acelerador e DMEM reais. São 12 jobs (wfi, polling, disputa na DMEM, escritas com BUSY, ERR_CODE 1 a 4, SOFT_RESET e retomada, caso 6), nas 6 configurações (`make tb_fw`)
+  - [ ] Trocar a ponte comportamental da Porta D no TB-FW pelo `top.v` quando o xbar e o adapter existirem
 - [ ] **Teste de erro 4 do MAS §16.4**: `ADDR_C` sem slave tem que voltar DECERR do crossbar e `ERR_CODE = 4`. Só dá para testar com o crossbar no lugar
 - [ ] **UVM integrado** em [`tb/uvm/`](tb/uvm/) (responsável: a definir)
   - [ ] Carrega parâmetros e estímulos de várias dimensões e valores, a partir do `model/golden.py`
@@ -368,6 +371,8 @@ Tudo roda pelo `Makefile` na raiz. O simulador padrão é o Icarus; para usar o 
 | `make tb_dma` | TB-DMA com o caso 6×5×7. Outra configuração: `make tb_dma T=8 PP=0` |
 | `make regress` | Matriz do MAS §16.3 (168 execuções), testes de erro e dreno da §16.4 e o critério de desempenho da §16.5 |
 | `make wave` | Forma de onda de uma operação completa: `build/wave_dma.shm` no Xcelium (abre no SimVision) ou `build/wave_dma.vcd` no Icarus (abre no GTKWave) |
+| `make fw` | Monta o firmware (`build/fw/firmware.hex`) e regenera `sw/mailbox.h` e `sw/mailbox_pkg.sv` ([`sw/README.md`](sw/README.md)) |
+| `make tb_fw` | TB-FW: o firmware na CPU, com DMA, acelerador e DMEM reais, nas 6 configurações, sem e com backpressure. Enquanto a CPU não está na `main`, usa o `rtl/cpu` da branch `processor-rv32i` (`CPU_DIR=` muda) |
 | `make clean` | Apaga `build/` |
 
 A DMEM dos alvos `tb_rd`, `tb_wr`, `tb_dma`, `wave` e `regress` se escolhe com `MEM`:
@@ -467,7 +472,7 @@ sequenceDiagram
     CPU->>REGS: sw STATUS = DONE (W1C), irq cai
 ```
 
-Firmware mínimo (C, em [`sw/`](sw/)):
+Firmware mínimo em C, para ilustrar o fluxo. O firmware de verdade está em Assembly, em [`sw/firmware.s`](sw/firmware.s): faz o mesmo, mas lê cada job numa caixa de correio na DMEM, então um binário só serve para todos os testes ([`sw/README.md`](sw/README.md)).
 
 ```c
 #include <stdint.h>
@@ -561,7 +566,7 @@ python model/golden.py --test-all
 - **Síntese:** memórias de 64 KiB em flip-flops dominariam a área e esconderiam a diferença entre as configurações. Proposta: sintetizar o acelerador (e o DMA) para T = 2, 4 e 8, com as SRAMs como modelos comportamentais fora da síntese. A ferramenta de síntese ainda não foi definida.
 - **AXI4:** violações de handshake (`VALID` dependente de `READY`, `VALID` caindo antes do handshake) travam o xbar. Mitigação: assertions nos testbenches unitários.
 - **Desempenho:** mesmo com bursts, a carga de A/B domina a latência (banda de 32 bits). O prefetch com ping-pong esconde cálculo e gravação atrás da carga; o ganho é medido comparando `PINGPONG = 0` e `1` (MAS §7 e §14).
-- **Firmware:** a Porta D não enxerga a IMEM. Por isso `.rodata` e `.data` precisam ser ligados na DMEM (linker script) e pré-carregados por `$readmemh`.
+- **Firmware:** a Porta D não enxerga a IMEM. Um firmware em C precisaria de `.rodata` e `.data` ligados na DMEM (linker script) e pré-carregados por `$readmemh`. O [`sw/firmware.s`](sw/firmware.s) evita isso: não tem dados nem pilha, e na DMEM usa só a caixa de correio.
 - **Dúvidas para o professor:**
   - O `wfi` acordado pelo `irq` atende o "preferencialmente interrupção"?
   - A síntese pode excluir as memórias?
